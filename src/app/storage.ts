@@ -10,12 +10,10 @@ const finished = (tx: IDBTransaction) => new Promise<void>((resolve, reject) => 
 export class ProjectStorage {
   private database: Promise<IDBDatabase>;
   private assets = new WeakMap<SourceImage, string>();
-  private knownAssets = new Set<string>();
   private loadedAssets = new Map<string, SourceImage>();
   private chain: Promise<unknown> = Promise.resolve();
   private pending: { id: string; project: Project; details: () => { name: string; thumbnail: string } } | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  writes = 0;
   constructor(private status: (message: string, problem?: boolean) => void) {
     this.database = new Promise((resolve, reject) => {
       if (typeof indexedDB === 'undefined') { reject(new Error('Browser storage is unavailable. Download your project to keep it.')); return; }
@@ -53,7 +51,6 @@ export class ProjectStorage {
         image = Object.freeze(asset.image);
         this.loadedAssets.set(record.assetId, image);
         this.assets.set(image, record.assetId);
-        this.knownAssets.add(record.assetId);
       }
     }
     const result = parseProject({ format: 'tracery', version: 1, settings: record.settings, image });
@@ -114,12 +111,12 @@ export class ProjectStorage {
       }
       const tx = db.transaction(['projects', 'assets'], 'readwrite');
       const done = finished(tx);
-      if (assetId && !this.knownAssets.has(assetId)) tx.objectStore('assets').put({ id: assetId, image: project.image });
+      // Check the database, not memory: another tab may have deleted this image.
+      if (assetId && !(await request(tx.objectStore('assets').count(assetId)))) tx.objectStore('assets').put({ id: assetId, image: project.image });
       const record: SavedProject = { id, name, settings: project.settings, assetId, thumbnail, updatedAt: Date.now() };
       tx.objectStore('projects').put(record);
       await done;
-      if (assetId) { this.knownAssets.add(assetId); this.loadedAssets.set(assetId, project.image!); }
-      this.writes++;
+      if (assetId) this.loadedAssets.set(assetId, project.image!);
       return record;
     });
   }
@@ -142,7 +139,7 @@ export class ProjectStorage {
       const assets = await request(tx.objectStore('assets').getAllKeys());
       for (const key of assets) if (!referenced.has(String(key))) {
         tx.objectStore('assets').delete(key);
-        this.knownAssets.delete(String(key)); this.loadedAssets.delete(String(key));
+        this.loadedAssets.delete(String(key));
       }
       await done;
     });

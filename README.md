@@ -82,10 +82,10 @@ Run `node dist/cli/tracery.js --help` for every flag. `npm link` puts `tracery` 
 
 The Install command tab produces two commands you paste into the server:
 
-1. Decode the banner from base64 into `/etc/<name>/banner.ansi` and print it once.
+1. Decode the banner from base64 into `/etc/tracery/<name>.ansi` and print it once.
 2. Add `/etc/update-motd.d/00-<name>` so it shows at every SSH login.
 
-Undo with `sudo rm -r /etc/<name> /etc/update-motd.d/00-<name>`.
+Undo with `sudo rm /etc/tracery/<name>.ansi /etc/update-motd.d/00-<name>`.
 
 ## Image mode (Kitty / Ghostty / iTerm2)
 

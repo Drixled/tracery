@@ -89,7 +89,8 @@ export function stylize(m: Mask, S: Settings, q: Quantizer): Pixels | null {
   const spread = S.spread / 100;
   const cx = (l + r) / 2;
   const cy = (top + bot) / 2;
-  const rmax = Math.hypot(Math.max(1, r - l) / 2, Math.max(1, bot - top)) || 1;
+  // Center-to-corner distance in the same units as t below, so radial t reaches 1 at the corners.
+  const rmax = Math.hypot(Math.max(1, r - l) / 4, Math.max(1, bot - top) / 2) || 1;
   const useImageColors = !!C && S.imgColors && S.src === 'image';
 
   const px: (string | null)[] = new Array(W * H).fill(null);

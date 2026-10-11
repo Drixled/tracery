@@ -1,4 +1,4 @@
-import { graphicsSequence, graphicsTermTest } from './graphics';
+import { bytesToBase64, graphicsSequence, graphicsTermTest } from './graphics';
 import type { RenderResult } from './render';
 import type { Settings } from './types';
 import type { Project } from './project';
@@ -18,12 +18,7 @@ export interface ExportText {
   text: string;
 }
 
-export function toBase64(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-}
+export const toBase64 = (s: string) => bytesToBase64(new TextEncoder().encode(s));
 
 export const slug = (name: string) => (name || 'banner').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'banner';
 
@@ -38,8 +33,9 @@ export function exportableSettings(S: Settings): Partial<Settings> {
 export function buildExport(kind: ExportKind, S: Settings, r: RenderResult, extras: ExportExtras = {}): ExportText {
   if (kind === 'json') return { note: 'Your complete project, including the source image. Import it here to continue. ASCII and image projects also work with the CLI.', text: JSON.stringify(extras.project ?? exportableSettings(S), null, 2) };
   const n = slug(S.name);
-  const dir = `/etc/${n}`;
-  const file = `${dir}/banner.ansi`;
+  // Files live in a folder Tracery owns, so the undo line never removes a system folder such as /etc/ssh.
+  const dir = '/etc/tracery';
+  const file = `${dir}/${n}.ansi`;
   const data = toBase64(r.ansi);
   const depth = S.color === 'true' ? '24-bit truecolor' : `${S.color}-color`;
 
@@ -54,7 +50,7 @@ export function buildExport(kind: ExportKind, S: Settings, r: RenderResult, extr
           '# 2. Show it at every SSH login (Ubuntu/Debian update-motd)',
           `printf '%s\\n' '#!/bin/sh' 'cat ${file}' | sudo tee /etc/update-motd.d/00-${n} >/dev/null && sudo chmod +x /etc/update-motd.d/00-${n}`,
           '',
-          `# Undo: sudo rm -r ${dir} /etc/update-motd.d/00-${n}`,
+          `# Undo: sudo rm ${file} /etc/update-motd.d/00-${n}`,
         ].join('\n'),
       };
     case 'agent':
@@ -97,7 +93,7 @@ ${data}
       const ext = proto === 'iterm' ? 'iterm' : 'kitty';
       const cols = gfxColumns(S, r);
       const seq = graphicsSequence(proto, extras.png, cols);
-      const gfxFile = `${dir}/banner.${ext}`;
+      const gfxFile = `${dir}/${n}.${ext}`;
       const label = proto === 'iterm' ? 'iTerm2 / WezTerm' : 'Kitty / Ghostty';
       return {
         note: `Shows the PNG on ${label} and falls back to the block banner everywhere else. Runs from /etc/profile.d at login, skipped inside tmux, which drops image escapes.`,
@@ -114,16 +110,11 @@ ${data}
           'fi',
           'TRACERY',
           '',
-          `# Undo: sudo rm -r ${dir} /etc/profile.d/00-${n}.sh`,
+          `# Undo: sudo rm ${file} ${gfxFile} /etc/profile.d/00-${n}.sh`,
           `# If you also installed the block-only MOTD, remove /etc/update-motd.d/00-${n} so it doesn't print twice.`,
         ].join('\n'),
       };
     }
-    default:
-      return {
-        note: 'Your complete project, including the source image. Import it here to continue. ASCII projects also work with the CLI.',
-        text: JSON.stringify(extras.project ?? exportableSettings(S), null, 2),
-      };
   }
 }
 

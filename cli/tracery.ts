@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from 'node:fs';
-import { deflateSync } from 'node:zlib';
-import { PALETTES, buildExport, encodePng, graphicsSequence, gfxColumns, rasterizeCells, maskFromAscii, maskFromRgba, render, parseProject, validateSettings, type Settings, type Mask } from '../src/engine';
+import { PNG } from 'pngjs';
+import { PALETTES, buildExport, graphicsSequence, gfxColumns, rasterizeCells, maskFromAscii, maskFromRgba, render, parseProject, validateSettings, type Settings, type Mask } from '../src/engine';
 import { parseCli, numericOption } from './args';
 import { decodePng } from './image';
 
@@ -88,7 +88,13 @@ async function main() {
   const result = render(mask, S);
   if (!result.lines) throw new Error('Nothing to draw. The source is empty.');
   const wantsPng = !!(values.png || values.kitty || values.iterm || values['install-graphics']);
-  const png = wantsPng ? await encodePng(rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg), data => new Uint8Array(deflateSync(data, { level: 9 }))) : undefined;
+  let png: Uint8Array | undefined;
+  if (wantsPng) {
+    const raster = rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg);
+    const image = new PNG({ width: raster.width, height: raster.height });
+    image.data = Buffer.from(raster.data.buffer);
+    png = new Uint8Array(PNG.sync.write(image, { deflateLevel: 9 }));
+  }
   if (values.png && png) write(values.png, png);
   const output = values['install-graphics'] ? buildExport('graphics', S, result, { png }).text + '\n' : values.kitty || values.iterm ? graphicsSequence(S.gfxProto, png!, gfxColumns(S, result)) : values.install ? buildExport('install', S, result).text + '\n' : values.agent ? buildExport('agent', S, result).text + '\n' : result.ansi;
   if (values.out) write(values.out, output);

@@ -9,8 +9,6 @@ export class Renderer {
   private image: Raster | null = null;
   private result: RenderResult = render(null, DEFAULTS);
   private fontVersion = 0;
-  maskBuilds = 0;
-  renderBuilds = 0;
   invalidateFonts() { this.fontVersion++; }
   render(S: Settings, image: Raster | null): RenderResult {
     const source = S.src === 'ascii' ? [S.ascii, S.cw, S.ch, S.glyph] : S.src === 'text' ? [S.text, S.font, S.size, S.tracking, S.leading, S.mode, S.ratio, this.fontVersion] : [S.imgW, S.thresh, S.imgUse, S.mode, S.ratio];
@@ -19,10 +17,10 @@ export class Renderer {
     const changed = maskKey !== this.maskKey || (S.src === 'image' && image !== this.image);
     if (changed) {
       const mask = S.src === 'ascii' ? maskFromAscii(S.ascii, S) : S.src === 'text' ? maskFromText(S) : image ? maskFromRgba(image, S) : null;
-      this.mask = mask; this.maskKey = maskKey; this.image = image; this.maskBuilds++;
+      this.mask = mask; this.maskKey = maskKey; this.image = image;
     }
     if (changed || styleKey !== this.styleKey) {
-      this.result = render(this.mask, S); this.styleKey = styleKey; this.renderBuilds++;
+      this.result = render(this.mask, S); this.styleKey = styleKey;
     }
     return this.result;
   }

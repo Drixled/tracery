@@ -1,4 +1,4 @@
-import type { Cell, RenderResult } from '../engine';
+import { rasterizeCells, type Cell, type RenderResult } from '../engine';
 
 export interface PreviewOptions {
   /** Cell width in CSS px. */
@@ -14,44 +14,17 @@ export function drawCells(cv: HTMLCanvasElement, rows: Cell[][], cols: number, {
   // Keep large imported art within browser canvas limits, even at high zoom.
   let cw = Math.max(1, Math.min(Math.round(cell * dpr), Math.floor(16384 / Math.max(1, cols)), Math.floor(16384 / Math.max(1, rows.length * ratio))));
   let chh = Math.max(2, Math.round(cw * ratio));
-  while (cw > 1 && cols * cw * rows.length * chh > 16777216) {
+  while (cw > 1 && (cols * cw * rows.length * chh > 16777216 || rows.length * chh > 16384)) {
     cw--;
     chh = Math.max(2, Math.round(cw * ratio));
   }
-  cv.width = Math.max(1, cols * cw);
-  cv.height = Math.max(1, rows.length * chh);
+  // The same painter as the PNG export, so the export stays a pixel-exact copy of the preview.
+  const raster = rasterizeCells(rows, cols, cw, ratio, null);
+  cv.width = raster.width;
+  cv.height = raster.height;
   cv.style.width = `${cv.width / dpr}px`;
   cv.style.height = `${cv.height / dpr}px`;
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  const hx = Math.round(cw / 2);
-  const hy = Math.round(chh / 2);
-  const quads = [
-    [0, 0, hx, hy],
-    [hx, 0, cw - hx, hy],
-    [0, hy, hx, chh - hy],
-    [hx, hy, cw - hx, chh - hy],
-  ];
-  rows.forEach((row, ry) =>
-    row.forEach((c, rx) => {
-      const ox = rx * cw;
-      const oy = ry * chh;
-      if (c.bg && c.m !== 15) {
-        ctx.fillStyle = c.bg;
-        ctx.fillRect(ox, oy, cw, chh);
-      }
-      if (!c.m || !c.fg) return;
-      ctx.fillStyle = c.fg;
-      if (c.m === 15) {
-        ctx.fillRect(ox, oy, cw, chh);
-        return;
-      }
-      for (let b = 0; b < 4; b++)
-        if (c.m & (1 << b)) {
-          const q = quads[b];
-          ctx.fillRect(ox + q[0], oy + q[1], q[2], q[3]);
-        }
-    }),
-  );
+  ctx.putImageData(new ImageData(new Uint8ClampedArray(raster.data), raster.width, raster.height), 0, 0);
   return cw / dpr;
 }
 

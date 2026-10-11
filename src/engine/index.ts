@@ -8,7 +8,6 @@ export * from './presets';
 export * from './export';
 export * from './palettes';
 export * from './raster';
-export * from './png';
 export * from './graphics';
 export * from './project';
 export * from './settings-schema';

@@ -20,7 +20,6 @@ export class Editor<TImage> {
     if (this.current.image) Object.freeze(this.current.image);
     this.history = new History(this.current, 50, { clone, equal });
   }
-  get version() { return this.revision; }
   get settings() { return this.current.settings; }
   get decodedImage() { return this.image; }
   get source() { return this.current.image; }
@@ -63,14 +62,6 @@ export class Editor<TImage> {
   async load(next: Project): Promise<boolean> {
     this.loading = true;
     try { return await this.restore(next, 'initial'); } finally { this.loading = false; }
-  }
-  async importProject(load: () => Promise<Project>): Promise<boolean> {
-    const revision = this.begin();
-    try {
-      const next = await load();
-      if (revision !== this.revision) return false;
-      return await this.restore(next);
-    } finally { if (revision === this.revision && this.busy) { this.busy = false; this.emit('busy'); } }
   }
   async replaceImage(load: () => Promise<{ source: SourceImage; decoded: TImage }>): Promise<boolean> {
     const revision = this.begin();

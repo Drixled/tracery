@@ -26,7 +26,9 @@ export class Router {
   }
   private read() {
     const [view, id] = location.pathname.split('/').filter(Boolean);
-    this.route = view === 'b' && id ? { view: 'banner', id: decodeURIComponent(id) } : { view: 'home' };
+    let decoded = '';
+    try { decoded = view === 'b' && id ? decodeURIComponent(id) : ''; } catch { /* A malformed address goes home. */ }
+    this.route = decoded ? { view: 'banner', id: decoded } : { view: 'home' };
     const canonical = routePath(this.route);
     if (location.pathname !== canonical) history.replaceState(null, '', canonical);
     this.listeners.forEach(listener => listener(this.route));
