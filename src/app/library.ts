@@ -1,38 +1,50 @@
-import { type Raster, type Settings } from '../engine';
+import { DEFAULTS, createProject, type Raster, type Settings } from '../engine';
 import type { Editor } from './editor';
 import { element as $, showMessage } from './dom';
 import { ProjectStorage, type SavedProject } from './storage';
 const STYLE_KEYS: (keyof Settings)[] = ['palette', 'stops', 'dither', 'dir', 'reverse', 'spread', 'gap', 'gapFillOn', 'gapFill', 'outline', 'outlineColor', 'lipOn', 'lipColor', 'shineOn', 'shineColor', 'bevel', 'shadowOn', 'shadowColor', 'sdx', 'sdy'];
 
-export function setupLibrary(editor: Editor<Raster>, storage: ProjectStorage, thumbnail: () => string) {
+export function setupLibrary(editor: Editor<Raster>, storage: ProjectStorage, thumbnail: () => string, showEditor: () => void) {
   let records: SavedProject[] = [], selected: string | null = null;
   const name = $<HTMLInputElement>('projectName');
-  const report = (error: unknown) => { $('libraryMsg').textContent = (error as Error).message; };
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem('tracery:selection') ?? 'null');
+    if (value && typeof value === 'object' && 'name' in value && typeof value.name === 'string' && value.name.length <= 128) {
+      name.value = value.name;
+      if ('id' in value && typeof value.id === 'string') selected = value.id;
+    }
+  } catch { /* Project selection is optional; project data is stored separately. */ }
+  const remember = () => { try { localStorage.setItem('tracery:selection', JSON.stringify({ id: selected, name: name.value })); } catch { /* Optional UI state. */ } };
+  name.addEventListener('input', remember);
+  const report = (error: unknown) => { $('libraryMsg').textContent = (error as Error).message; showMessage((error as Error).message); };
   const selectedRecord = () => { const record = records.find(p => p.id === selected); if (!record) throw new Error('Open a saved project first.'); return record; };
-  const syncActions = () => { for (const id of ['renameProject', 'duplicateProject', 'deleteProject']) $<HTMLButtonElement>(id).disabled = !selected; };
+  const syncActions = () => { remember(); $('saveProject').textContent = selected ? 'Save changes' : 'Save project'; for (const id of ['renameProject', 'duplicateProject', 'deleteProject']) $<HTMLButtonElement>(id).disabled = !selected; };
   const open = async (record: SavedProject) => {
-    if (await editor.importProject(() => storage.project(record))) { selected = record.id; name.value = record.name; $('libraryMsg').textContent = `Opened ${record.name}.`; await refresh(); }
+    if (await editor.importProject(() => storage.project(record))) { selected = record.id; name.value = record.name; $('libraryMsg').textContent = `Opened ${record.name}.`; await refresh(); showEditor(); }
   };
   async function refresh() {
     records = await storage.list();
+    if (selected && !records.some(record => record.id === selected)) selected = null;
     const box = $('projectLibrary'); box.replaceChildren();
     for (const record of records) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'project-card'; button.setAttribute('aria-label', `Open ${record.name}`); button.setAttribute('aria-pressed', String(selected === record.id));
       if (record.thumbnail) { const image = document.createElement('img'); image.src = record.thumbnail; image.alt = ''; button.append(image); }
-      const title = document.createElement('span'); title.textContent = record.name; button.append(title); button.onclick = () => { void open(record).catch(report); }; box.append(button);
+      const title = document.createElement('span'); title.textContent = record.name; button.append(title);
+      const meta = document.createElement('small'); meta.textContent = `${record.settings.src === 'ascii' ? 'ASCII' : record.settings.src === 'text' ? 'Text' : 'Image'} / ${record.settings.mode} blocks`; button.append(meta); button.onclick = () => { void open(record).catch(report); }; box.append(button);
     }
-    if (!records.length) { const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Save a project to keep it in this browser.'; box.append(hint); }
+    if (!records.length) { const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Your collection starts here. Create a project or save your current draft.'; box.append(hint); }
     syncActions();
   }
   $('saveProject').onclick = () => { void (async () => {
-    const previous = selected;
+    const previous = selected, version = editor.version;
     const record = await storage.save(name.value || editor.settings.name, editor.snapshot(), thumbnail(), previous ?? undefined);
-    if (selected === previous) { selected = record.id; name.value = record.name; }
+    if (selected === previous && editor.version === version) { selected = record.id; name.value = record.name; }
     $('libraryMsg').textContent = `Saved ${record.name}.`; await refresh();
   })().catch(report); };
   $('saveNewProject').onclick = () => { void (async () => {
     const previous = selected, version = editor.version;
-    const record = await storage.save(name.value || editor.settings.name, editor.snapshot(), thumbnail());
+    const copyName = `${(name.value || editor.settings.name).slice(0, 123)} copy`;
+    const record = await storage.save(copyName, editor.snapshot(), thumbnail());
     if (selected === previous && editor.version === version) { selected = record.id; name.value = record.name; } $('libraryMsg').textContent = `Saved new project ${record.name}.`; await refresh();
   })().catch(report); };
   $('renameProject').onclick = () => { void (async () => { const renamed = await storage.rename(selectedRecord(), name.value); $('libraryMsg').textContent = `Renamed to ${renamed.name}.`; await refresh(); })().catch(report); };
@@ -48,7 +60,10 @@ export function setupLibrary(editor: Editor<Raster>, storage: ProjectStorage, th
     if (selected === record.id) { selected = null; name.value = ''; }
     $('libraryMsg').textContent = `Deleted ${record.name}. The current draft is still open.`; await refresh();
   })().catch(report); };
-  $('newProject').onclick = () => { selected = null; name.value = ''; syncActions(); $('libraryMsg').textContent = 'The next save will create a new project.'; };
+  $('newProject').onclick = () => { void (async () => {
+    await storage.flushDraft();
+    if (await editor.restore(createProject({ ...DEFAULTS, ascii: '', name: 'untitled' }))) { selected = null; name.value = ''; syncActions(); showEditor(); }
+  })().catch(report); };
   const lookSelect = $<HTMLSelectElement>('customLook');
   let looks: Awaited<ReturnType<ProjectStorage['looks']>> = [];
   const refreshLooks = async () => {
@@ -71,5 +86,5 @@ export function setupLibrary(editor: Editor<Raster>, storage: ProjectStorage, th
   })().catch(e => { $('lookMsg').textContent = e.message; }); };
   $('deleteLook').onclick = () => { void (async () => { const id = lookSelect.value; if (!id) return; await storage.deleteLook(id); await refreshLooks(); $('lookMsg').textContent = 'Deleted the saved look. Current settings were kept.'; })().catch(e => { $('lookMsg').textContent = e.message; }); };
   void refresh().catch(report); void refreshLooks().catch(e => { $('lookMsg').textContent = e.message; });
-  return { refresh };
+  return { refresh, detach(label: string) { selected = null; name.value = label.slice(0, 128); syncActions(); } };
 }
