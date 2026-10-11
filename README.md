@@ -18,7 +18,6 @@ Image ─────┘   (silhouette)  (fill, gap,   (half / quad /
 ```sh
 npm install
 npm run dev        # web app at http://localhost:5173
-npm test           # engine and editor tests
 npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 ```
 
@@ -106,20 +105,13 @@ node dist/cli/tracery.js oneir.tracery.json --install-graphics
 src/engine/   shared settings schema, masks, image sampling, styling, fitting, exports
 src/app/      editor/history, cached renderer, storage/library, controls, exports, previews
 cli/          argument parsing, PNG decoder, Node CLI bundled with the engine
-test/         unit tests plus CLI and browser regression suites
 ```
 
 
 ## Checks
 
 ```sh
-npm test                        # engine, editor, schema, cache, and image unit tests
 npm run build                   # TypeScript check and both production builds
-npm run test:cli                 # built CLI, errors, image projects, and PNG output
-npx playwright install chromium --only-shell  # first browser test setup
-npm run test:browser             # project reload/import, library, looks, exports, undo, caching
 ```
-
-Browser tests start their own local server on port 5176 and use fresh browser contexts. They do not need external fonts or a deployed site. A failed browser check saves a screenshot in `output/playwright/failure.png`. No CI setup is required.
 
 The editor commits asynchronous image loads and imports only if no newer edit has replaced them. Undo snapshots share immutable image assets. The renderer caches source masks and reuses finished artwork for preview-only changes. Controls and imported settings use the same schema for limits and choices.
