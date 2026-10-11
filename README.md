@@ -18,15 +18,24 @@ Image ─────┘   (silhouette)  (fill, gap,   (half / quad /
 ```sh
 npm install
 npm run dev        # web app at http://localhost:5173
-npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
+npm run typecheck  # svelte-check over the app, engine and CLI
+npm run build      # type-check, then web app → dist/web, CLI → dist/cli/tracery.js
 ```
+
+## Stack
+
+- `src/engine/` is plain TypeScript with no DOM or framework. The web app and the CLI share it.
+- `src/app/` is the web app: Svelte 5 components (runes), Tailwind CSS 4 and [shadcn-svelte](https://shadcn-svelte.com) on Bits UI. `tracery.svelte.ts` holds the app state; `editor.ts`, `history.ts`, `storage.ts` and `renderer.ts` stay framework-free.
+- `src/lib/components/ui/` holds the shadcn-svelte components. They are copied into the repo, so edit them freely; add more with `npx shadcn-svelte@latest add <name>`. The theme tokens live in `src/app.css`.
+- Icons are [Heroicons](https://heroicons.com), compiled into Svelte components by `unplugin-icons`: `import XMarkIcon from '~icons/heroicons/x-mark-16-solid'`. Use the 16px solid (micro) set for UI controls. The shadcn CLI writes Lucide imports into new components, so swap those for Heroicons after adding one.
+- Vite builds both targets: `vite.config.ts` for the web app and `vite.cli.config.ts` for the Node CLI.
 
 ## Web app
 
 The app works like a design tool's file browser:
 
 - **Home** (`/`) shows every banner in this browser, newest edit first. Click a thumbnail to open it. The `⋯` menu on each card renames, duplicates or deletes it. **New banner** and **Import** create a banner and open it.
-- **A banner** (`/b/<id>`) has its own address, so you can bookmark or reload it. The preview sits on the left and the Source, Color, Shape and Output controls on the right. The banner's name at the top opens a menu to rename, duplicate, download the project file or delete. **Export** opens the export formats in a dialog.
+- **A banner** (`/b/<id>`) has its own address, so you can bookmark or reload it. The preview sits on the left and the Source, Color, Shape and Output controls on the right; drag the divider to resize them. The banner's name at the top opens a menu to rename, duplicate, download the project file or delete. **Export** opens the export formats in a dialog.
 
 Banners save themselves about half a second after each edit; there is no Save button. Opening a banner starts a fresh undo history. When hosting the built app, serve `index.html` for every path; `npm run dev` and `npm run preview` already do.
 

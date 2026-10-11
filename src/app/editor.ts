@@ -23,6 +23,7 @@ export class Editor<TImage> {
   get version() { return this.revision; }
   get settings() { return this.current.settings; }
   get decodedImage() { return this.image; }
+  get source() { return this.current.image; }
   snapshot() { return clone(this.current); }
   subscribe(listener: (event: EditorEvent) => void) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   private emit(event: EditorEvent) { this.listeners.forEach(listener => listener(event)); }

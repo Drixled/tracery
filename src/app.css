@@ -1,0 +1,149 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn-svelte/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tracery is dark only. The shadcn tokens carry the warm kiln palette; the extra ones below cover the terminal and status colors. */
+:root {
+  color-scheme: dark;
+  --radius: 0.375rem;
+  --background: #120f10;
+  --foreground: #efe6d8;
+  --card: #191516;
+  --card-foreground: #efe6d8;
+  --popover: #231d1f;
+  --popover-foreground: #efe6d8;
+  --primary: #ffcf3a;
+  --primary-foreground: #1a1200;
+  --secondary: #231d1f;
+  --secondary-foreground: #efe6d8;
+  --muted: #2a2325;
+  --muted-foreground: #a3968b;
+  --accent: #2a2325;
+  --accent-foreground: #efe6d8;
+  --destructive: #ff6b5b;
+  --border: #352c2f;
+  --input: #352c2f;
+  --ring: #ffcf3a;
+
+  --panel: #191516;
+  --raise: #231d1f;
+  --line-soft: #2a2325;
+  --faint: #6f645d;
+  --heat: #e2482c;
+  --ok: #7fd18b;
+  --warn: #ffb347;
+  --well: #0e0c0d;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-display: "Silkscreen", "Press Start 2P", monospace;
+  /* Above this width the editor shows the preview and controls side by side. */
+  --breakpoint-studio: 53.75rem;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-panel: var(--panel);
+  --color-raise: var(--raise);
+  --color-line-soft: var(--line-soft);
+  --color-faint: var(--faint);
+  --color-heat: var(--heat);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-well: var(--well);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  #app {
+    @apply flex min-h-full flex-col;
+  }
+  #app {
+    @apply studio:h-full;
+  }
+}
+
+@layer components {
+  /* The heat-ramp wordmark, drawn in the pixel display face. */
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: linear-gradient(180deg, #fff27a 0%, var(--primary) 45%, var(--heat) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Section headings in the control panel. */
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--primary);
+  }
+  .swatch {
+    @apply h-6 w-[30px] shrink-0 cursor-pointer rounded-sm border border-input bg-raise p-0;
+  }
+  .swatch::-webkit-color-swatch-wrapper {
+    padding: 2px;
+  }
+  .swatch::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+  }
+  .swatch::-moz-color-swatch {
+    border: none;
+    border-radius: 2px;
+  }
+  .checkerboard {
+    background-color: var(--background);
+    background-image:
+      linear-gradient(45deg, var(--raise) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--raise) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--raise) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--raise) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  }
+  .dot-grid {
+    background:
+      radial-gradient(circle, var(--line-soft) 1px, transparent 1.5px) 0 0 / 22px 22px,
+      var(--background);
+  }
+}
