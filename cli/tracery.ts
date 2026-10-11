@@ -10,7 +10,8 @@ import {
   gfxColumns,
   rasterizeCells,
   maskFromAscii,
-  normalizeSettings,
+  parseProject,
+  validateSettings,
   render,
   type BlockMode,
   type ColorDepth,
@@ -41,7 +42,7 @@ Options
       --list-palettes    List palette names and exit
   -h, --help             Show this help
 
-Settings files come from the Settings tab in the web app. Text and image
+Project files come from the Project tab in the web app. Text and image
 sources need a browser, so the CLI renders the "ascii" field only.
 
 Examples
@@ -96,7 +97,8 @@ if (positionals[0]) {
     fail(`couldn't read settings from ${positionals[0]}: ${(e as Error).message}`);
   }
 }
-const S: Settings = normalizeSettings(raw);
+let S: Settings;
+try { S = parseProject(raw).settings; } catch (e) { fail((e as Error).message); }
 
 if (values.art) {
   S.ascii = readFileSync(values.art === '-' ? 0 : values.art, 'utf8');
@@ -125,13 +127,16 @@ if (values.cols) S.gfxCols = Math.max(1, Number(values.cols) || 0);
 if (values.iterm) S.gfxProto = 'iterm';
 if (values.kitty) S.gfxProto = 'kitty';
 
-const result = render(maskFromAscii(S.ascii, S), S);
+try { validateSettings(S); } catch (e) { fail((e as Error).message); }
+let result;
+try { result = render(maskFromAscii(S.ascii, S), S); } catch (e) { fail((e as Error).message); }
 if (!result.lines) fail('nothing to draw. The art is empty.');
 
 const wantsPng = !!(values.png || values.kitty || values.iterm || values['install-graphics']);
-const png = wantsPng
-  ? await encodePng(rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg), (d) => new Uint8Array(deflateSync(d, { level: 9 })))
-  : undefined;
+let png: Uint8Array | undefined;
+try {
+  if (wantsPng) png = await encodePng(rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg), (d) => new Uint8Array(deflateSync(d, { level: 9 })));
+} catch (e) { fail((e as Error).message); }
 if (values.png && png) writeFileSync(values.png, png);
 
 const output = values['install-graphics']

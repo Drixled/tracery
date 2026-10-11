@@ -1,12 +1,14 @@
 import { graphicsSequence, graphicsTermTest } from './graphics';
 import type { RenderResult } from './render';
 import type { Settings } from './types';
+import type { Project } from './project';
 
 export type ExportKind = 'install' | 'agent' | 'printf' | 'raw' | 'png' | 'graphics' | 'json';
 
 export interface ExportExtras {
   /** Encoded PNG of the banner, needed for the png and graphics exports. */
   png?: Uint8Array;
+  project?: Project;
 }
 
 export const gfxColumns = (S: Settings, r: RenderResult) => (S.gfxCols > 0 ? S.gfxCols : r.cols);
@@ -49,7 +51,7 @@ export function buildExport(kind: ExportKind, S: Settings, r: RenderResult, extr
           `sudo mkdir -p ${dir} && printf '%s' '${data}' | base64 -d | sudo tee ${file} >/dev/null && cat ${file}`,
           '',
           '# 2. Show it at every SSH login (Ubuntu/Debian update-motd)',
-          `printf '#!/bin/sh\\ncat ${file}\\n' | sudo tee /etc/update-motd.d/00-${n} >/dev/null && sudo chmod +x /etc/update-motd.d/00-${n}`,
+          `printf '%s\\n' '#!/bin/sh' 'cat ${file}' | sudo tee /etc/update-motd.d/00-${n} >/dev/null && sudo chmod +x /etc/update-motd.d/00-${n}`,
           '',
           `# Undo: sudo rm -r ${dir} /etc/update-motd.d/00-${n}`,
         ].join('\n'),
@@ -118,8 +120,21 @@ ${data}
     }
     default:
       return {
-        note: 'Your current settings as JSON. Import it here later, or render it on a server with the CLI.',
-        text: JSON.stringify(exportableSettings(S), null, 2),
+        note: 'Your complete project, including the source image. Import it here to continue. ASCII projects also work with the CLI.',
+        text: JSON.stringify(extras.project ?? exportableSettings(S), null, 2),
       };
   }
+}
+
+export interface ExportDownload { filename: string; data: string | Uint8Array; mime: string }
+/** Download the same export shown in the selected tab. PNG contains image bytes. */
+export function buildDownload(kind: ExportKind, S: Settings, r: RenderResult, extras: ExportExtras = {}): ExportDownload {
+  const n = slug(S.name);
+  if (kind === 'png') {
+    if (!extras.png) throw new Error('The PNG is not ready.');
+    return { filename: `${n}.png`, data: extras.png, mime: 'image/png' };
+  }
+  if (kind === 'graphics' && !extras.png) throw new Error('The terminal image is not ready.');
+  const suffix = kind === 'json' ? 'tracery.json' : kind === 'raw' ? 'ansi' : kind === 'agent' ? 'agent.txt' : kind === 'graphics' ? 'graphics.sh' : kind === 'printf' ? 'printf.sh' : 'install.sh';
+  return { filename: `${n}.${suffix}`, data: buildExport(kind, S, r, extras).text + (kind === 'raw' ? '' : '\n'), mime: kind === 'json' ? 'application/json' : 'text/plain;charset=utf-8' };
 }

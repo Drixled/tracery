@@ -11,8 +11,13 @@ export interface PreviewOptions {
 export function drawCells(cv: HTMLCanvasElement, rows: Cell[][], cols: number, { cell, ratio }: PreviewOptions): number {
   const ctx = cv.getContext('2d')!;
   const dpr = window.devicePixelRatio || 1;
-  const cw = Math.max(1, Math.round(cell * dpr));
-  const chh = Math.max(2, Math.round(cell * ratio * dpr));
+  // Keep large imported art within browser canvas limits, even at high zoom.
+  let cw = Math.max(1, Math.min(Math.round(cell * dpr), Math.floor(16384 / Math.max(1, cols)), Math.floor(16384 / Math.max(1, rows.length * ratio))));
+  let chh = Math.max(2, Math.round(cw * ratio));
+  while (cw > 1 && cols * cw * rows.length * chh > 16777216) {
+    cw--;
+    chh = Math.max(2, Math.round(cw * ratio));
+  }
   cv.width = Math.max(1, cols * cw);
   cv.height = Math.max(1, rows.length * chh);
   cv.style.width = `${cv.width / dpr}px`;

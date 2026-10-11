@@ -7,12 +7,16 @@ import {
   PALETTE_CATEGORIES,
   buildExport,
   generatePalette,
-  gfxColumns,
-  graphicsSequence,
   rasterizeCells,
-  exportableSettings,
+  buildDownload,
+  createProject,
+  parseProject,
+  MAX_IMAGE_DATA,
+  type Project,
+  type SourceImage,
   maskFromAscii,
   normalizeSettings,
+  validateSettings,
   render,
   slug,
   type Dither,
@@ -23,25 +27,32 @@ import {
 } from '../engine';
 import { maskFromImage, maskFromText } from './canvas-masks';
 import { drawCells } from './preview';
+import { History } from './history';
 
 const STORE = 'tracery:v1';
 const TAB_STORE = 'tracery:tab';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
-let S: Settings = loadSettings();
+const initial = loadProject();
+let S: Settings = initial.settings;
+let sourceImage: SourceImage | null = initial.image;
+const history = new History(initial);
+const project = () => createProject(S, sourceImage);
+let imageRequest = 0;
 let tab: ExportKind = loadTab();
 let image: HTMLImageElement | null = null;
 let last: RenderResult = render(null, S);
 let renderId = 0;
 let png: { id: number; bytes: Uint8Array; url: string } | null = null;
 let pngPending: number | null = null;
+let pngError: { id: number; message: string } | null = null;
 
-function loadSettings(): Settings {
+function loadProject(): Project {
   try {
     const raw = localStorage.getItem(STORE) ?? localStorage.getItem('ansi-kiln:v1');
-    if (raw) return normalizeSettings(JSON.parse(raw));
+    if (raw) return parseProject(JSON.parse(raw));
   } catch { /* storage unavailable or corrupt */ }
-  return normalizeSettings({});
+  return createProject(normalizeSettings({}));
 }
 function loadTab(): ExportKind {
   try {
@@ -52,20 +63,27 @@ function loadTab(): ExportKind {
 }
 function save() {
   try {
-    localStorage.setItem(STORE, JSON.stringify(S));
+    localStorage.setItem(STORE, JSON.stringify(project()));
     localStorage.setItem(TAB_STORE, tab);
-  } catch { /* ignore */ }
+  } catch { $('projectMsg').textContent = 'Browser storage is full or unavailable. Download your project to keep it.'; }
 }
 
 /* ---------- render loop ---------- */
 let queued = false;
-function schedule() {
+let pendingEdit = false;
+let editGroup: string | undefined;
+function schedule(group?: string | false) {
+  if (group !== false) { pendingEdit = true; editGroup = group; }
   if (queued) return;
   queued = true;
   requestAnimationFrame(() => {
     queued = false;
     update();
   });
+}
+function syncHistory() {
+  $<HTMLButtonElement>('undo').disabled = !history.canUndo;
+  $<HTMLButtonElement>('redo').disabled = !history.canRedo;
 }
 
 function currentMask() {
@@ -75,7 +93,15 @@ function currentMask() {
 }
 
 function update() {
-  last = render(currentMask(), S);
+  if (pendingEdit) { history.record(project(), editGroup); pendingEdit = false; }
+  syncHistory();
+  try {
+    last = render(currentMask(), S);
+    $('projectMsg').textContent = '';
+  } catch (e) {
+    last = render(null, S);
+    $('projectMsg').textContent = (e as Error).message;
+  }
   renderId++;
   const cv = $<HTMLCanvasElement>('cv');
   $('empty').hidden = last.lines > 0;
@@ -126,14 +152,18 @@ async function ensurePng(): Promise<Uint8Array | null> {
   if (!last.lines) return null;
   if (png && png.id === renderId) return png.bytes;
   const id = renderId;
-  const r = rasterizeCells(last.rows, last.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg);
+  let r;
+  try { r = rasterizeCells(last.rows, last.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg); }
+  catch (e) { pngError = { id, message: (e as Error).message }; renderExport(); return null; }
   const cv = document.createElement('canvas');
   cv.width = r.width;
   cv.height = r.height;
   cv.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(r.data.buffer, r.data.byteOffset, r.data.length), r.width, r.height), 0, 0);
   const blob = await new Promise<Blob | null>((res) => cv.toBlob(res, 'image/png'));
-  if (!blob || id !== renderId) return null;
+  if (id !== renderId) return null;
+  if (!blob) { pngError = { id, message: 'Could not encode the PNG. Reduce Cell px or the source size.' }; renderExport(); return null; }
   const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (id !== renderId) return null;
   if (png) URL.revokeObjectURL(png.url);
   png = { id, bytes, url: URL.createObjectURL(blob) };
   return bytes;
@@ -151,9 +181,9 @@ function schedulePng() {
 function renderExport() {
   document.querySelectorAll<HTMLButtonElement>('.tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   const fresh = png && png.id === renderId ? png : null;
-  if (needsPng() && !fresh) schedulePng();
-  const e = buildExport(tab, S, last, { png: fresh?.bytes });
-  $('exnote').textContent = e.note;
+  if (needsPng() && !fresh && pngError?.id !== renderId) schedulePng();
+  const e = buildExport(tab, S, last, { png: fresh?.bytes, project: project() });
+  $('exnote').textContent = needsPng() && pngError?.id === renderId ? pngError.message : e.note;
   const isPng = tab === 'png';
   $('out').hidden = isPng;
   $('pngview').hidden = !isPng;
@@ -166,10 +196,11 @@ function renderExport() {
   dl.textContent =
     tab === 'json' ? 'Download .json'
     : tab === 'png' ? 'Download .png'
-    : tab === 'graphics' ? `Download .${S.gfxProto}`
+    : tab === 'graphics' || tab === 'install' || tab === 'printf' ? 'Download .sh'
+    : tab === 'agent' ? 'Download .txt'
     : 'Download .ansi';
   dl.disabled = tab !== 'json' && (!last.lines || (needsPng() && !fresh));
-  $<HTMLButtonElement>('copy').disabled = needsPng() && !fresh;
+  $<HTMLButtonElement>('copy').disabled = tab !== 'json' && (!last.lines || (needsPng() && !fresh));
   $('copy').textContent = isPng ? 'Copy image' : 'Copy';
 }
 
@@ -243,8 +274,9 @@ function renderStops() {
     inp.addEventListener('input', () => {
       S.stops[i] = inp.value;
       S.palette = '';
-      schedule();
+      schedule(inp.id);
     });
+    inp.addEventListener('change', () => { flushEdit(); history.endGroup(); });
     box.appendChild(inp);
   });
   const mk = (label: string, title: string, disabled: boolean, fn: () => void) => {
@@ -350,10 +382,17 @@ document.querySelectorAll<HTMLInputElement>('[data-k]').forEach((el) => {
   const evt = el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input';
   el.addEventListener(evt, () => {
     const k = el.dataset.k as keyof Settings;
-    (S as any)[k] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
-    if (k === 'font') document.fonts.load(`${S.size}px "${S.font}"`).then(schedule, schedule);
-    schedule();
+    const value = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    try { S = validateSettings({ ...S, [k]: value }); }
+    catch (e) {
+      if (el.type !== 'checkbox') el.value = String(S[k]);
+      $('projectMsg').textContent = (e as Error).message;
+      return;
+    }
+    if (k === 'font') document.fonts.load(`${S.size}px "${S.font}"`).then(() => schedule(false), () => schedule(false));
+    schedule(evt === 'input' ? el.id : undefined);
   });
+  el.addEventListener('change', () => { flushEdit(); history.endGroup(); });
 });
 document.querySelectorAll<HTMLElement>('[data-seg]').forEach((seg) =>
   seg.addEventListener('click', (e) => {
@@ -376,7 +415,7 @@ $('loadOneir').onclick = () => {
   $<HTMLTextAreaElement>('ascii').value = ONEIR_ART;
   schedule();
 };
-$('reset').onclick = () => replaceSettings(normalizeSettings({}));
+$('reset').onclick = () => { imageRequest++; sourceImage = null; image = null; replaceSettings(normalizeSettings({})); $('dropmsg').textContent = 'Drop a PNG or click to choose. Transparent logos work best.'; };
 $('shuffle').onclick = () => {
   const p = PALETTES[Math.floor(Math.random() * PALETTES.length)];
   applyPalette(p);
@@ -405,7 +444,7 @@ $('copy').onclick = async () => {
     }
     return;
   }
-  const text = buildExport(tab, S, last, { png: png?.id === renderId ? png.bytes : undefined }).text;
+  const text = buildExport(tab, S, last, { png: png?.id === renderId ? png.bytes : undefined, project: project() }).text;
   const fallback = () => {
     const r = document.createRange();
     r.selectNodeContents($('out'));
@@ -418,20 +457,62 @@ $('copy').onclick = async () => {
   else fallback();
 };
 $('download').onclick = async () => {
-  const n = slug(S.name);
-  if (tab === 'json') return downloadBlob(`${n}.tracery.json`, JSON.stringify(exportableSettings(S), null, 2) + '\n', 'application/json');
-  if (tab === 'png') {
-    const bytes = await ensurePng();
-    if (bytes) downloadBlob(`${n}.png`, bytes, 'image/png');
-    return;
-  }
-  if (tab === 'graphics') {
-    const bytes = await ensurePng();
-    if (bytes) downloadBlob(`${n}.${S.gfxProto}`, graphicsSequence(S.gfxProto, bytes, gfxColumns(S, last)), 'text/plain;charset=utf-8');
-    return;
-  }
-  downloadBlob(`${n}.ansi`, last.ansi, 'text/plain;charset=utf-8');
+  const selected = tab;
+  const bytes = selected === 'png' || selected === 'graphics' ? await ensurePng() : undefined;
+  if ((selected === 'png' || selected === 'graphics') && !bytes) return;
+  const file = buildDownload(selected, S, last, { png: bytes ?? undefined, project: project() });
+  await downloadBlob(file.filename, file.data, file.mime);
 };
+
+function decodeImage(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => {
+      if (!im.naturalWidth || !im.naturalHeight || im.naturalWidth > 2048 || im.naturalHeight > 2048)
+        reject(new Error('The saved image must be at most 2048 pixels on each side.'));
+      else resolve(im);
+    };
+    im.onerror = () => reject(new Error('The source image could not be read.'));
+    im.src = dataUrl;
+  });
+}
+
+async function restoreProject(next: Project, record = true) {
+  if (record) flushEdit();
+  const request = ++imageRequest;
+  const restored = next.image ? await decodeImage(next.image.dataUrl) : null;
+  if (request !== imageRequest) return;
+  image = restored;
+  sourceImage = next.image;
+  S = next.settings;
+  $<HTMLTextAreaElement>('ascii').value = S.ascii;
+  $<HTMLTextAreaElement>('text').value = S.text;
+  $('dropmsg').textContent = sourceImage ? `${sourceImage.name} · Saved in this project.` : 'Drop a PNG or click to choose. Transparent logos work best.';
+  renderStops();
+  if (record) schedule(); else schedule(false);
+}
+
+function flushEdit() {
+  if (pendingEdit) { history.record(project(), editGroup); pendingEdit = false; }
+}
+async function travel(direction: 'undo' | 'redo') {
+  flushEdit();
+  const next = history[direction]();
+  syncHistory();
+  if (next) await restoreProject(next, false);
+}
+$('undo').onclick = () => void travel('undo');
+$('redo').onclick = () => void travel('redo');
+window.addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+  const target = e.target as HTMLElement;
+  // Keep native text-field undo while the user edits text.
+  if (target.closest('textarea, input:not([type=range]):not([type=color]):not([type=checkbox]), [contenteditable=true]')) return;
+  if (e.key.toLowerCase() === 'z' || (e.ctrlKey && e.key.toLowerCase() === 'y')) {
+    e.preventDefault();
+    void travel(e.shiftKey || e.key.toLowerCase() === 'y' ? 'redo' : 'undo');
+  }
+});
 
 $<HTMLInputElement>('importFile').addEventListener('change', async (e) => {
   const input = e.target as HTMLInputElement;
@@ -440,29 +521,47 @@ $<HTMLInputElement>('importFile').addEventListener('change', async (e) => {
   if (!f) return;
   const msg = $('importMsg');
   try {
-    const parsed = JSON.parse(await f.text());
-    replaceSettings(normalizeSettings(parsed));
+    if (f.size > 4 * 1024 * 1024) throw new Error('The project file is too large (maximum 4 MB).');
+    const parsed = parseProject(JSON.parse(await f.text()));
+    await restoreProject(parsed);
     msg.textContent = `Loaded ${f.name}.`;
-  } catch {
-    msg.textContent = `${f.name} isn't valid settings JSON. Export one from the Settings tab first.`;
+  } catch (e) {
+    msg.textContent = `Could not load ${f.name}: ${(e as Error).message}`;
   }
 });
 
-function loadImage(f: File | undefined) {
+async function loadImage(f: File | undefined) {
   if (!f || !f.type.startsWith('image/')) {
     $('dropmsg').textContent = 'That file is not an image. Try a PNG, JPG, GIF or WebP.';
     return;
   }
+  const request = ++imageRequest;
   const url = URL.createObjectURL(f);
-  const im = new Image();
-  im.onload = () => {
-    image = im;
-    $('dropmsg').textContent = `${f.name} · ${im.naturalWidth}×${im.naturalHeight}. Drop another to replace it.`;
+  try {
+    if (f.size > 10 * 1024 * 1024) throw new Error('Choose an image smaller than 10 MB.');
+    const original = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error('This image could not be read.'));
+      im.src = url;
+    });
+    const scale = Math.min(1, 2048 / Math.max(original.naturalWidth, original.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(original.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(original.naturalHeight * scale));
+    canvas.getContext('2d')!.drawImage(original, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/png');
+    if (dataUrl.length > MAX_IMAGE_DATA) throw new Error('The image is too large to save. Choose a smaller image.');
+    const decoded = await decodeImage(dataUrl);
+    if (request !== imageRequest) return;
+    image = decoded;
+    sourceImage = { dataUrl, name: f.name.slice(0, 256) };
     S.src = 'image';
+    $('dropmsg').textContent = `${f.name} · ${canvas.width}×${canvas.height}. Saved in this project.`;
     schedule();
-  };
-  im.onerror = () => ($('dropmsg').textContent = `Couldn't read ${f.name}.`);
-  im.src = url;
+  } catch (e) {
+    if (request === imageRequest) $('dropmsg').textContent = (e as Error).message;
+  } finally { URL.revokeObjectURL(url); }
 }
 $<HTMLInputElement>('imgfile').addEventListener('change', (e) => loadImage((e.target as HTMLInputElement).files?.[0]));
 const drop = $('drop');
@@ -484,13 +583,22 @@ window.addEventListener('paste', (e) => {
   const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/'));
   if (f) loadImage(f);
 });
-window.addEventListener('resize', () => S.fit && schedule());
+window.addEventListener('resize', () => S.fit && schedule(false));
 
 $<HTMLTextAreaElement>('ascii').value = S.ascii;
 $<HTMLTextAreaElement>('text').value = S.text;
 renderStops();
 update();
-document.fonts.ready.then(schedule);
+document.fonts.ready.then(() => schedule(false));
+if (initial.image) {
+  const request = ++imageRequest;
+  void decodeImage(initial.image.dataUrl).then(decoded => {
+    if (request !== imageRequest) return;
+    image = decoded;
+    $('dropmsg').textContent = `${sourceImage!.name} · Saved in this project.`;
+    schedule(false);
+  }).catch(e => { if (request === imageRequest) $('projectMsg').textContent = e.message; });
+}
 
 // Keep DEFAULTS referenced for devtools tinkering.
 (window as any).tracery = { get settings() { return S; }, defaults: DEFAULTS };

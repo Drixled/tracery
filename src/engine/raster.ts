@@ -18,6 +18,8 @@ export function rasterizeCells(rows: Cell[][], cols: number, cellW: number, rati
   const chh = Math.max(2, Math.round(cellW * ratio));
   const width = Math.max(1, cols * cw);
   const height = Math.max(1, rows.length * chh);
+  if (!Number.isFinite(width * height) || width > 16384 || height > 16384 || width * height > 16777216)
+    throw new Error('The PNG is too large. Reduce Cell px or the source size.');
   const data = new Uint8Array(width * height * 4);
   const cache = new Map<string, [number, number, number]>();
   const rgb = (h: string) => {

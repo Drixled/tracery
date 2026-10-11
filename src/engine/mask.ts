@@ -32,6 +32,11 @@ export function rowsFor(c: string, ch: number, glyph: boolean): number[] {
   return r.length ? r : [ch - 1];
 }
 
+export function checkMaskSize(width: number, height: number) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 4096 || height > 4096 || width * height > 1048576)
+    throw new Error('The source is too large. Reduce its width, height, or text size.');
+}
+
 export interface AsciiOptions {
   cw: number;
   ch: number;
@@ -48,6 +53,7 @@ export function maskFromAscii(art: string, { cw, ch, glyph }: AsciiOptions): Mas
   const rows = lines.map((l) => Array.from(l.slice(ind)));
   const W = Math.max(...rows.map((l) => l.length)) * cw;
   const H = rows.length * ch;
+  checkMaskSize(W, H);
   const F = new Uint8Array(W * H);
   rows.forEach((line, r) =>
     line.forEach((k, c) => {

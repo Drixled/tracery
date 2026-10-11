@@ -32,9 +32,15 @@ npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 | Output  | Half blocks `▀▄`, quadrant blocks `▚`, or full blocks `██`; truecolor, xterm-256 or 16-color VGA |
 | Preview | Fit to width or zoom, terminal cell ratio, background color, rulers at 80 / 103 / 120 columns |
 | Image   | PNG at any cell size, transparent or on the terminal background; Kitty / Ghostty or iTerm2 inline-image output |
-| Export  | Install command, agent prompt, `printf` one-liner, raw ANSI, PNG, terminal image, settings JSON; copy or download each |
+| Export  | Install command, agent prompt, `printf` one-liner, raw ANSI, PNG, terminal image, project JSON; copy or download each |
 
-Settings persist in `localStorage` (saved ANSI Kiln settings remain readable), and the Settings tab exports a `.tracery.json` you can import later or hand to the CLI. Existing `.kiln.json` files can still be imported.
+Projects persist in `localStorage`, including the source image. The Project tab exports a versioned `.tracery.json` file with all settings and the source image. Import it to continue later. Existing flat `.kiln.json` settings files and saved ANSI Kiln settings remain readable.
+
+Images are stored as PNGs, with a maximum of 2048 pixels on each side and 3 MB of encoded data. Larger images are resized when loaded. If browser storage is unavailable or full, the app asks you to download the project.
+
+Use Undo and Redo above the preview to restore settings, imported projects, resets, and image replacements. A slider drag counts as one edit. The app keeps the latest 50 snapshots. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z work outside text fields; text fields keep their native undo.
+
+Downloads match the selected export: install and terminal image scripts use `.sh`, agent prompts use `.txt`, raw banners use `.ansi`, and images use `.png`. The project download includes the source image. Imports reject unsupported modes, invalid colors, and values outside the control limits without replacing the current project.
 
 ## CLI
 

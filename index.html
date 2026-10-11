@@ -28,7 +28,7 @@
       </div>
 
       <div id="pane-ascii" class="sub">
-        <textarea id="ascii" data-k="ascii" spellcheck="false" aria-label="ASCII art source"></textarea>
+        <textarea maxlength="32768" id="ascii" data-k="ascii" spellcheck="false" aria-label="ASCII art source"></textarea>
         <div class="row"><label for="cw">Char width</label><input type="range" id="cw" data-k="cw" min="1" max="6" step="1"><output data-out="cw"></output></div>
         <div class="row"><label for="ch">Char height</label><input type="range" id="ch" data-k="ch" min="1" max="8" step="1"><output data-out="ch"></output></div>
         <label class="check"><input type="checkbox" id="glyph" data-k="glyph"> Shape punctuation (dots sit low, quotes sit high)</label>
@@ -36,7 +36,7 @@
       </div>
 
       <div id="pane-text" class="sub" hidden>
-        <textarea id="text" data-k="text" spellcheck="false" class="short" aria-label="Text to render"></textarea>
+        <textarea maxlength="2048" id="text" data-k="text" spellcheck="false" class="short" aria-label="Text to render"></textarea>
         <div class="row"><label for="font">Font</label><select id="font" data-k="font">
           <option>Shrikhand</option><option>Bowlby One SC</option><option>Bungee</option><option>Rubik Mono One</option><option>Righteous</option><option>Silkscreen</option><option>Press Start 2P</option><option>Pixelify Sans</option><option>VT323</option>
         </select><span></span></div>
@@ -119,7 +119,7 @@
       <div class="row"><label for="gfxCols">Show at cols</label><input type="range" id="gfxCols" data-k="gfxCols" min="0" max="200" step="1"><output id="gfxColsOut"></output></div>
       <div class="row"><label for="name">Banner name</label><input type="text" id="name" data-k="name" spellcheck="false"><span></span></div>
       <div class="toolbar">
-        <label class="btn ghost" for="importFile">Import settings<input type="file" id="importFile" accept="application/json,.json" class="visually-hidden"></label>
+        <label class="btn ghost" for="importFile">Import project<input type="file" id="importFile" accept="application/json,.json" class="visually-hidden"></label>
         <button type="button" class="btn ghost" id="reset">Reset everything</button>
       </div>
       <p class="hint" id="importMsg" role="status"></p>
@@ -127,6 +127,11 @@
   </aside>
 
   <section class="stage" aria-label="Preview and export">
+    <div class="toolbar">
+      <button type="button" class="btn ghost" id="undo" disabled title="Undo (Ctrl/Cmd+Z outside text fields)">Undo</button>
+      <button type="button" class="btn ghost" id="redo" disabled title="Redo (Ctrl/Cmd+Shift+Z outside text fields)">Redo</button>
+    </div>
+    <p class="hint" id="projectMsg" role="status"></p>
     <div class="stats" id="stats"></div>
     <div class="term" id="term">
       <div class="bar"><i></i><i></i><i></i><span id="termtitle">ssh oneir</span></div>
@@ -148,7 +153,7 @@
         <button type="button" role="tab" data-tab="raw">Raw ANSI</button>
         <button type="button" role="tab" data-tab="png">PNG</button>
         <button type="button" role="tab" data-tab="graphics">Terminal image</button>
-        <button type="button" role="tab" data-tab="json">Settings</button>
+        <button type="button" role="tab" data-tab="json">Project</button>
       </div>
       <div class="exbody">
         <div class="exhead">

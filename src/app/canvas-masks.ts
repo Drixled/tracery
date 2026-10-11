@@ -1,4 +1,4 @@
-import { pxAspect, rgb2hex, type Mask, type Settings } from '../engine';
+import { checkMaskSize, pxAspect, rgb2hex, type Mask, type Settings } from '../engine';
 
 /** Rasterize text with a web font into a silhouette, pre-stretched so pixels come out square in the terminal. */
 export function maskFromText(S: Settings): Mask | null {
@@ -15,6 +15,7 @@ export function maskFromText(S: Settings): Mask | null {
   const lineH = Math.ceil(size * 1.35) + S.leading;
   const W = Math.ceil((Math.max(...widths) + size) * sx) + 4;
   const H = lines.length * lineH + size;
+  checkMaskSize(W, H);
   cv.width = W;
   cv.height = H;
   x.font = font;
@@ -40,6 +41,7 @@ export function maskFromImage(img: HTMLImageElement | null, S: Settings): Mask |
   const W = S.imgW;
   const H = Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * W * pxAspect(S.mode, S.ratio)));
   const cv = document.createElement('canvas');
+  checkMaskSize(W, H);
   cv.width = W;
   cv.height = H;
   const x = cv.getContext('2d', { willReadFrequently: true })!;
