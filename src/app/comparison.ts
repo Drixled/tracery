@@ -11,13 +11,12 @@ export class Comparison {
     const current = this.current();
     $<HTMLButtonElement>('pinComparison').disabled = !current.result.lines;
     $('comparison').hidden = !this.pinned;
-    $<HTMLButtonElement>('clearComparison').disabled = !this.pinned;
     $('previewPair').classList.toggle('comparing', !!this.pinned);
     if (!this.pinned) return;
     const { result, background, ratio } = this.pinned;
     $('comparison').style.setProperty('--termbg', background);
     $('referenceSize').textContent = `Reference · ${result.cols}×${result.lines} cells`;
-    const cell = Math.max(1, Math.min(16, Math.floor(($('referenceScreen').clientWidth - 64) / Math.max(1, result.cols)), Math.floor(($('referenceScreen').clientHeight - 52) / Math.max(1, result.lines * ratio))));
+    const cell = Math.max(1, Math.min(16, Math.floor(($('referenceScreen').clientWidth - 36) / Math.max(1, result.cols))));
     drawCells($<HTMLCanvasElement>('referenceCanvas'), result.rows, result.cols, { cell, ratio });
   }
 }

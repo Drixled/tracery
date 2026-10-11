@@ -10,7 +10,6 @@ import { Comparison } from './comparison';
 import { ExportPanel } from './export-panel';
 import { decodeImage, importImage } from './images';
 import { drawCells } from './preview';
-import { Views } from './views';
 
 async function start() {
   const storage = new ProjectStorage(message => { $('saveStatus').textContent = message; });
@@ -27,9 +26,8 @@ async function start() {
   const controls = setupControls(editor, fontsChanged, flush);
   const comparison = new Comparison(() => ({ result, settings: editor.settings }), schedule);
   const thumbnail = () => {
-    result = renderer.render(editor.settings, editor.decodedImage);
-    const source = document.createElement('canvas');
-    drawCells(source, result.rows, result.cols, { cell: 2, ratio: editor.settings.ratio });
+    update();
+    const source = $<HTMLCanvasElement>('cv');
     if (!result.lines) return '';
     const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 80;
     const context = canvas.getContext('2d')!; context.imageSmoothingEnabled = false;
@@ -38,8 +36,7 @@ async function start() {
     context.drawImage(source, (160 - source.width * scale) / 2, (80 - source.height * scale) / 2, source.width * scale, source.height * scale);
     return canvas.toDataURL('image/png');
   };
-  const views = new Views(schedule);
-  const library = setupLibrary(editor, storage, thumbnail, () => views.open('editor'));
+  setupLibrary(editor, storage, thumbnail);
   function syncHistory() {
     $<HTMLButtonElement>('undo').disabled = editor.busy || !editor.history.canUndo;
     $<HTMLButtonElement>('redo').disabled = editor.busy || !editor.history.canRedo;
@@ -53,10 +50,9 @@ async function start() {
     $('term').style.setProperty('--termbg', S.termBg);
     if (result.lines) {
       const screen = $('screen');
-      const cell = S.fit ? Math.max(1, Math.min(16, Math.floor(((screen.clientWidth || 800) - 64) / Math.max(1, result.cols)), Math.floor(((screen.clientHeight || 400) - 52) / Math.max(1, result.lines * S.ratio)))) : S.zoom;
+      const cell = S.fit ? Math.max(1, Math.min(16, Math.floor((screen.clientWidth - 36) / Math.max(1, result.cols)))) : S.zoom;
       const cssCell = drawCells(canvas, result.rows, result.cols, { cell, ratio: S.ratio });
-      const rulerOffset = Math.max(0, (screen.clientWidth - 64 - result.cols * cssCell) / 2);
-      $('ruler').replaceChildren(...[80, 103, 120].filter(width => width * cssCell < screen.clientWidth + 400).map(width => { const mark = document.createElement('span'); mark.style.left = `${rulerOffset + width * cssCell}px`; mark.textContent = `${width} col`; return mark; }));
+      $('ruler').replaceChildren(...[80, 103, 120].filter(width => width * cssCell < screen.clientWidth + 400).map(width => { const mark = document.createElement('span'); mark.style.left = `${width * cssCell}px`; mark.textContent = `${width} col`; return mark; }));
     } else $('ruler').replaceChildren();
     const stats = $('stats'); stats.replaceChildren();
     if (result.lines) {
@@ -81,7 +77,7 @@ async function start() {
   $<HTMLInputElement>('importFile').onchange = event => {
     const input = event.target as HTMLInputElement; const file = input.files?.[0]; input.value = ''; if (!file) return;
     void editor.importProject(async () => { if (file.size > 4 * 1024 * 1024) throw new Error('The project file is too large (maximum 4 MB).'); return parseProject(JSON.parse(await file.text())); })
-      .then(applied => { if (applied) { $('importMsg').textContent = `Loaded ${file.name}.`; library.detach(file.name.replace(/(?:\.tracery)?\.json$/i, '')); views.open('editor'); } })
+      .then(applied => { if (applied) $('importMsg').textContent = `Loaded ${file.name}.`; })
       .catch(e => { $('importMsg').textContent = `Could not load ${file.name}: ${e.message}`; });
   };
   const loadImage = (file?: File) => { if (file) void editor.replaceImage(() => importImage(file)).catch(e => showMessage(e.message)); };
@@ -95,6 +91,6 @@ async function start() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   void document.fonts.ready.then(fontsChanged);
   update();
-  Object.assign(window, { tracery: { get settings() { return editor.settings; }, get project() { return editor.snapshot(); }, editor, renderer, storage, views } });
+  Object.assign(window, { tracery: { get settings() { return editor.settings; }, get project() { return editor.snapshot(); }, editor, renderer, storage } });
 }
 void start().catch(e => showMessage(`Could not start Tracery: ${e.message}`));

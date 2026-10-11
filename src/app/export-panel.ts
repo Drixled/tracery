@@ -1,7 +1,6 @@
 import { buildDownload, buildExport, rasterizeCells, type ExportKind, type Project, type RenderResult } from '../engine';
 import { element as $ } from './dom';
 import { downloadBlob } from './downloads';
-import { setupTabKeys } from './views';
 const TABS: ExportKind[] = ['install', 'agent', 'printf', 'raw', 'png', 'graphics', 'json'];
 export class ExportPanel {
   private tab: ExportKind = 'install';
@@ -15,7 +14,6 @@ export class ExportPanel {
   private error: { version: number; message: string } | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   constructor() {
-    setupTabKeys($('exportView'));
     try { const saved = localStorage.getItem('tracery:tab') ?? localStorage.getItem('ansi-kiln:tab'); if (TABS.includes(saved as ExportKind)) this.tab = saved as ExportKind; } catch { /* Optional tab preference. */ }
     document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.onclick = () => {
       this.tab = button.dataset.tab as ExportKind;
@@ -62,8 +60,7 @@ export class ExportPanel {
   }
   private paint() {
     if (!this.project) return;
-    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => { button.id = `export-tab-${button.dataset.tab}`; const selected = button.dataset.tab === this.tab; button.setAttribute('aria-selected', String(selected)); button.tabIndex = selected ? 0 : -1; });
-    $('export-content').setAttribute('aria-labelledby', `export-tab-${this.tab}`);
+    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === this.tab)));
     const fresh = this.png?.version === this.version ? this.png : null;
     if (this.needsPng() && this.result.lines && !fresh && this.error?.version !== this.version) {
       if (this.timer) clearTimeout(this.timer);

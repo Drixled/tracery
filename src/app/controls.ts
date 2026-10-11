@@ -1,7 +1,6 @@
-import { DEFAULTS, LOOKS, ONEIR_ART, PALETTES, PALETTE_CATEGORIES, SETTINGS_SCHEMA, createProject, generatePalette, maskFromAscii, render, type Dither, type Palette, type Raster, type Settings } from '../engine';
+import { DEFAULTS, LOOKS, ONEIR_ART, PALETTES, PALETTE_CATEGORIES, SETTINGS_SCHEMA, createProject, generatePalette, type Dither, type Palette, type Raster, type Settings } from '../engine';
 import type { Editor } from './editor';
 import { element as $, showMessage } from './dom';
-import { drawCells } from './preview';
 
 /** Controls get their options and limits from the engine schema. */
 export function setupControls(editor: Editor<Raster>, changedFont: () => void, endEdit: () => void) {
@@ -34,19 +33,6 @@ export function setupControls(editor: Editor<Raster>, changedFont: () => void, e
   const applyPalette = (p: Palette, extra: Partial<Settings> = {}) => edit({ palette: p.name, stops: p.stops.slice(), outlineColor: p.outlineColor, lipColor: p.lipColor, shineColor: p.shineColor, shadowColor: p.shadowColor, dither: p.dither ?? (editor.settings.dither === 'none' ? 'bayer4' : editor.settings.dither), ...extra });
   const categories = $<HTMLSelectElement>('palCat');
   categories.append(...PALETTE_CATEGORIES.map(c => new Option(c, c)));
-  const miniMask = maskFromAscii('XXXXXXX\n  XXX  \n  XXX  \n  XXX  \n  XXX  ', { ...DEFAULTS, cw: 2, ch: 2 });
-  const previews = new Map<string, string>();
-  const palettePreview = (palette: Palette) => {
-    let url = previews.get(palette.name);
-    if (!url) {
-      const settings = { ...DEFAULTS, stops: palette.stops, outlineColor: palette.outlineColor, lipColor: palette.lipColor, shineColor: palette.shineColor, shadowColor: palette.shadowColor, dither: palette.dither ?? DEFAULTS.dither };
-      const result = render(miniMask, settings);
-      const canvas = document.createElement('canvas');
-      drawCells(canvas, result.rows, result.cols, { cell: 4, ratio: 2 });
-      url = canvas.toDataURL(); previews.set(palette.name, url);
-    }
-    return url;
-  };
   const listPalettes = () => {
     const query = $<HTMLInputElement>('palSearch').value.trim().toLowerCase();
     const box = $('palettes'); box.replaceChildren(); let count = 0;
@@ -57,11 +43,8 @@ export function setupControls(editor: Editor<Raster>, changedFont: () => void, e
       const label = document.createElement('div'); label.className = 'cat'; label.textContent = `${category} · ${items.length}`; box.append(label);
       for (const p of items) {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'chip'; button.dataset.name = p.name;
-        const image = document.createElement('img'); image.className = 'palette-art'; image.alt = ''; image.src = palettePreview(p);
-        const ramp = document.createElement('span'); ramp.className = 'palette-ramp';
-        for (const color of p.stops) { const stop = document.createElement('i'); stop.style.background = color; ramp.append(stop); }
-        const title = document.createElement('span'); title.textContent = p.name;
-        button.append(image, ramp, title); button.onclick = () => applyPalette(p); box.append(button);
+        const swatch = document.createElement('span'); swatch.className = 'sw'; swatch.style.background = `linear-gradient(180deg,${p.stops.join(',')})`; swatch.style.boxShadow = `0 0 0 2px ${p.outlineColor}`;
+        button.append(swatch, p.name); button.onclick = () => applyPalette(p); box.append(button);
       }
       count += items.length;
     }

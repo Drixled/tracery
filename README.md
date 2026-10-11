@@ -24,15 +24,6 @@ npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 
 ## Web app
 
-The desktop workspace has three views:
-
-- **Library:** saved project cards, import, new project, rename, duplicate, and delete.
-- **Editor:** a fixed artwork preview beside Source, Color, Shape, and Output inspector tabs. Palette cards show sample artwork. Advanced controls expand when needed.
-- **Export:** format selection and copy/download actions beside the artwork preview.
-
-The toolbar keeps the project name, save status, undo/redo, Save changes, and Save a copy available in every view. New project starts an empty ASCII design; undo can restore the previous draft. Save a copy creates a separate project with a copy name. The workspace is designed for desktop windows at least 1100 pixels wide.
-
-
 | Area    | What you can change |
 |---------|---------------------|
 | Source  | Paste ASCII art, type text in 9 Google Fonts, or drop / paste an image (threshold, keep opaque, dark or light pixels, optional source colors) |

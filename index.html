@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Tracery</title>
   <meta name="description" content="Fire ASCII art, text or images into colored terminal block banners and MOTDs.">
-  <meta name="theme-color" content="#161719">
+  <meta name="theme-color" content="#141113">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,66 +13,41 @@
 </head>
 <body>
 <header class="top">
-  <div class="brand"><h1>Tracery</h1><span>Terminal artwork studio</span></div>
-  <nav class="view-nav" aria-label="Workspace"><button type="button" data-view="library" aria-current="false">Library</button><button type="button" data-view="editor" aria-current="page">Editor</button><button type="button" data-view="export" aria-current="false">Export</button></nav>
-  <a class="repo-link" href="https://github.com/Drixled/tracery" target="_blank" rel="noreferrer">GitHub</a>
+  <h1>Tracery</h1>
+  <p>Paste ASCII art, type a word or drop an image, fire it into terminal blocks, then install it as your MOTD.</p>
 </header>
-<div class="project-bar">
-  <label for="projectName" class="visually-hidden">Project name</label><input type="text" id="projectName" maxlength="128" placeholder="Untitled project" aria-label="Project name">
-  <span id="saveStatus" class="hint" role="status">Local draft</span>
-  <div class="history-tools"><button type="button" class="btn ghost" id="undo" disabled title="Undo (Ctrl/Cmd+Z outside text fields)">Undo</button><button type="button" class="btn ghost" id="redo" disabled title="Redo (Ctrl/Cmd+Shift+Z outside text fields)">Redo</button></div>
-  <button type="button" class="btn ghost" id="saveNewProject">Save a copy</button><button type="button" class="btn" id="saveProject">Save project</button>
-</div>
-<p class="app-message hint" id="projectMsg" role="status"></p>
-<main class="app">
-  <section id="libraryView" class="library-view" aria-label="Project library" hidden>
-    <div class="view-heading"><div><h2>Your projects</h2><p>Keep a collection of terminal artwork. Your projects stay in this browser.</p></div><div class="toolbar"><label class="btn ghost" for="importFile">Import project<input type="file" id="importFile" accept="application/json,.json" class="visually-hidden"></label><button type="button" class="btn" id="newProject">New project</button></div></div>
-    <div class="library-actions"><span>Selected project</span><button type="button" class="btn ghost" id="renameProject" disabled>Rename</button><button type="button" class="btn ghost" id="duplicateProject" disabled>Duplicate</button><button type="button" class="btn ghost danger" id="deleteProject" disabled>Delete</button><p id="libraryMsg" class="hint" role="status"></p></div>
-    <p class="hint" id="importMsg" role="status"></p>
-    <div id="projectLibrary" class="project-library"></div>
-    <button type="button" class="library-draft" id="resumeDraft"><span>Continue current draft</span><span>Your latest changes are saved automatically.</span></button>
-  </section>
-  <div id="workspace" class="workspace">
-    <section class="stage" aria-label="Artwork preview"><div class="stats" id="stats"></div>
-    <div class="preview-pair" id="previewPair">
-    <div class="term" id="term">
-      <div class="bar"><span id="termtitle">ssh oneir</span></div>
-      <div class="ruler" id="ruler"></div>
-      <div class="screen" id="screen"><canvas id="cv"></canvas><p class="empty" id="empty" hidden>Nothing to draw yet. Add some art, text or an image.</p></div>
-    </div>
-    <div class="term" id="comparison" hidden>
-      <div class="bar"><span id="referenceSize">Reference</span></div>
-      <div class="screen" id="referenceScreen"><canvas id="referenceCanvas"></canvas></div>
-    </div>
-    </div>
-    <div class="canvas-tools"><div class="toolbar"><button type="button" class="btn ghost" id="pinComparison">Pin reference</button><button type="button" class="btn ghost" id="clearComparison">Clear reference</button></div>
-    <div class="viewctl">
-      <label><input type="checkbox" id="fit" data-k="fit"> Fit preview</label>
-      <label>Zoom <input type="range" id="zoom" data-k="zoom"></label>
-      <label title="Terminal cell height divided by width. Ghostty and most fonts sit near 2.0">Cell ratio <input type="range" id="ratio" data-k="ratio"><output data-out="ratio"></output></label>
-      <label>Terminal bg <input type="color" id="termBg" data-k="termBg"></label>
-    </div></div>
 
+<main class="app">
+  <aside class="panel" aria-label="Controls">
+    <section class="group" aria-label="Project library">
+      <h2>Projects</h2>
+      <label for="projectName" class="lbl">Project name</label>
+      <input type="text" id="projectName" maxlength="128" placeholder="Name this design">
+      <div class="toolbar"><button type="button" class="btn" id="saveProject">Save project</button><button type="button" class="btn ghost" id="saveNewProject">Save as new</button><button type="button" class="btn ghost" id="newProject">New save</button></div>
+      <div id="projectLibrary" class="project-library"></div>
+      <div class="toolbar"><button type="button" class="btn ghost tiny" id="renameProject" disabled>Rename</button><button type="button" class="btn ghost tiny" id="duplicateProject" disabled>Duplicate</button><button type="button" class="btn ghost tiny" id="deleteProject" disabled>Delete</button></div>
+      <p id="libraryMsg" class="hint" role="status"></p>
+      <p id="saveStatus" class="hint" role="status"></p>
     </section>
-    <aside id="inspectorView" class="panel" aria-label="Design inspector"><div class="inspector-tabs" role="tablist" aria-label="Design controls"><button type="button" role="tab" id="tab-source" aria-controls="inspector-source" aria-selected="true" tabindex="0" data-inspector="source">Source</button><button type="button" role="tab" id="tab-color" aria-controls="inspector-color" aria-selected="false" tabindex="-1" data-inspector="color">Color</button><button type="button" role="tab" id="tab-shape" aria-controls="inspector-shape" aria-selected="false" tabindex="-1" data-inspector="shape">Shape</button><button type="button" role="tab" id="tab-output" aria-controls="inspector-output" aria-selected="false" tabindex="-1" data-inspector="output">Output</button></div><div class="inspector-scroll"><section class="group inspector-pane" id="inspector-source" role="tabpanel" aria-labelledby="tab-source" data-inspector-pane="source">
+    <section class="group">
       <h2>Source</h2>
       <div class="seg" data-seg="src"></div>
 
       <div id="pane-ascii" class="sub">
         <textarea id="ascii" data-k="ascii" spellcheck="false" aria-label="ASCII art source"></textarea>
-        <details class="advanced"><summary>Character settings</summary><div class="row"><label for="cw">Char width</label><input type="range" id="cw" data-k="cw"><output data-out="cw"></output></div>
+        <div class="row"><label for="cw">Char width</label><input type="range" id="cw" data-k="cw"><output data-out="cw"></output></div>
         <div class="row"><label for="ch">Char height</label><input type="range" id="ch" data-k="ch"><output data-out="ch"></output></div>
         <label class="check"><input type="checkbox" id="glyph" data-k="glyph"> Shape punctuation (dots sit low, quotes sit high)</label>
-        </details><div class="toolbar"><button type="button" class="btn ghost" id="loadOneir">Load Oneir art</button></div>
+        <div class="toolbar"><button type="button" class="btn ghost" id="loadOneir">Load Oneir art</button></div>
       </div>
 
       <div id="pane-text" class="sub" hidden>
         <textarea id="text" data-k="text" spellcheck="false" class="short" aria-label="Text to render"></textarea>
         <div class="row"><label for="font">Font</label><select id="font" data-k="font"></select><span></span></div>
         <div class="row"><label for="size">Height px</label><input type="range" id="size" data-k="size"><output data-out="size"></output></div>
-        <details class="advanced"><summary>Text spacing</summary><div class="row"><label for="tracking">Tracking</label><input type="range" id="tracking" data-k="tracking"><output data-out="tracking"></output></div>
+        <div class="row"><label for="tracking">Tracking</label><input type="range" id="tracking" data-k="tracking"><output data-out="tracking"></output></div>
         <div class="row"><label for="leading">Line gap</label><input type="range" id="leading" data-k="leading"><output data-out="leading"></output></div>
-        </details><p class="hint">Pixel fonts look crispest at multiples of 8.</p>
+        <p class="hint">Pixel fonts look crispest at multiples of 8.</p>
       </div>
 
       <div id="pane-image" class="sub" hidden>
@@ -82,8 +57,10 @@
         <div class="row"><label for="imgUse">Keep pixels</label><select id="imgUse" data-k="imgUse"></select><span></span></div>
         <label class="check"><input type="checkbox" id="imgColors" data-k="imgColors"> Use the image's own colors for the fill</label>
       </div>
-    </section><section class="group inspector-pane" id="inspector-color" role="tabpanel" aria-labelledby="tab-color" data-inspector-pane="color" hidden>
-      <h2>Color <span class="h2tools"><button type="button" class="btn ghost tiny" id="generate" title="Make a new palette from a random color harmony">Generate</button><button type="button" class="btn ghost tiny" id="shuffle" title="Pick a random preset and dither">Shuffle</button></span></h2>
+    </section>
+
+    <section class="group">
+      <h2>Palette <span class="h2tools"><button type="button" class="btn ghost tiny" id="generate" title="Make a new palette from a random color harmony">Generate</button><button type="button" class="btn ghost tiny" id="shuffle" title="Pick a random preset and dither">Shuffle</button></span></h2>
       <div class="palfilter">
         <input type="search" id="palSearch" placeholder="Search palettes" aria-label="Search palettes" spellcheck="false">
         <select id="palCat" aria-label="Palette category"><option value="">All categories</option></select>
@@ -92,30 +69,34 @@
       <p class="hint" id="palCount"></p>
       <div class="lbl">Fill ramp, top to bottom</div>
       <div class="stops" id="stops"></div>
-      <details class="advanced"><summary>Gradient and dither</summary><div class="row"><label for="dither">Dither</label><select id="dither" data-k="dither"></select><span></span></div>
+      <div class="row"><label for="dither">Dither</label><select id="dither" data-k="dither"></select><span></span></div>
       <div class="row"><label for="dir">Direction</label><select id="dir" data-k="dir"></select><span></span></div>
       <div class="row"><label for="spread">Ramp spread</label><input type="range" id="spread" data-k="spread"><output data-out="spread"></output></div>
-      <label class="check"><input type="checkbox" id="reverse" data-k="reverse"> Reverse ramp</label></details>
-    </section><section class="group inspector-pane" id="inspector-shape" role="tabpanel" aria-labelledby="tab-shape" data-inspector-pane="shape" hidden>
+      <label class="check"><input type="checkbox" id="reverse" data-k="reverse"> Reverse ramp</label>
+    </section>
+
+    <section class="group">
       <h2>Shape</h2>
       <div class="chips" id="looks"></div>
-      <details class="advanced"><summary>Saved looks</summary><label for="customLook" class="lbl">Saved looks</label><select id="customLook"><option value="">Choose a saved look</option></select>
+      <label for="customLook" class="lbl">Saved looks</label><select id="customLook"><option value="">Choose a saved look</option></select>
       <label for="lookName" class="lbl">Look name</label><input type="text" id="lookName" maxlength="128" placeholder="Name this palette and shape">
       <div class="toolbar"><button type="button" class="btn ghost" id="saveLook">Save look</button><button type="button" class="btn ghost" id="deleteLook" disabled>Delete look</button></div>
-      <p id="lookMsg" class="hint" role="status"></p></details>
+      <p id="lookMsg" class="hint" role="status"></p>
       <div class="row"><label for="gap">Gap</label><input type="range" id="gap" data-k="gap"><output data-out="gap"></output></div>
       <div class="swrow"><label class="check"><input type="checkbox" id="gapFillOn" data-k="gapFillOn"> Fill the gap</label><input type="color" id="gapFill" data-k="gapFill" aria-label="Gap color"></div>
       <div class="row"><label for="outline">Outline</label><input type="range" id="outline" data-k="outline"><output data-out="outline"></output></div>
       <div class="swrow"><span class="grow">Outline color</span><input type="color" id="outlineColor" data-k="outlineColor" aria-label="Outline color"></div>
-      <details class="advanced"><summary>Surface and shadow</summary><div class="swrow"><label class="check"><input type="checkbox" id="lipOn" data-k="lipOn"> Darker lower lip</label><input type="color" id="lipColor" data-k="lipColor" aria-label="Lip color"></div>
+      <div class="swrow"><label class="check"><input type="checkbox" id="lipOn" data-k="lipOn"> Darker lower lip</label><input type="color" id="lipColor" data-k="lipColor" aria-label="Lip color"></div>
       <div class="swrow"><label class="check"><input type="checkbox" id="shineOn" data-k="shineOn"> Shine dots on left edges</label><input type="color" id="shineColor" data-k="shineColor" aria-label="Shine color"></div>
       <div class="swrow"><label class="check"><input type="checkbox" id="bevel" data-k="bevel"> Bevel (light top, dark bottom edge)</label></div>
       <div class="swrow"><label class="check"><input type="checkbox" id="shadowOn" data-k="shadowOn"> Drop shadow</label><input type="color" id="shadowColor" data-k="shadowColor" aria-label="Shadow color"></div>
       <div class="pair">
         <div class="row compact"><label for="sdx">X</label><input type="range" id="sdx" data-k="sdx"><output data-out="sdx"></output></div>
         <div class="row compact"><label for="sdy">Y</label><input type="range" id="sdy" data-k="sdy"><output data-out="sdy"></output></div>
-      </div></details>
-    </section><section class="group inspector-pane" id="inspector-output" role="tabpanel" aria-labelledby="tab-output" data-inspector-pane="output" hidden>
+      </div>
+    </section>
+
+    <section class="group">
       <h2>Output</h2>
       <div class="row"><label for="targetCols">Export width</label><select id="targetCols" data-k="targetCols"></select><span></span></div>
       <p class="hint">Resizes wide artwork to fit the selected terminal width.</p>
@@ -124,29 +105,57 @@
       <p class="hint" id="modehint"></p>
       <div class="lbl">Color depth</div>
       <div class="seg" data-seg="color"></div>
-      <details class="advanced"><summary>Image export settings</summary><div class="lbl">Image output (PNG and terminal graphics)</div>
+      <div class="lbl">Image output (PNG and terminal graphics)</div>
       <div class="row"><label for="pngCell">Cell px</label><input type="range" id="pngCell" data-k="pngCell"><output data-out="pngCell"></output></div>
       <label class="check"><input type="checkbox" id="pngTransparent" data-k="pngTransparent"> Transparent background (otherwise uses Terminal bg)</label>
       <div class="seg" data-seg="gfxProto"></div>
       <div class="row"><label for="gfxCols">Show at cols</label><input type="range" id="gfxCols" data-k="gfxCols"><output id="gfxColsOut"></output></div>
-      </details><div class="row"><label for="name">Banner name</label><input type="text" id="name" data-k="name" spellcheck="false"><span></span></div>
+      <div class="row"><label for="name">Banner name</label><input type="text" id="name" data-k="name" spellcheck="false"><span></span></div>
       <div class="toolbar">
-
+        <label class="btn ghost" for="importFile">Import project<input type="file" id="importFile" accept="application/json,.json" class="visually-hidden"></label>
         <button type="button" class="btn ghost" id="reset">Reset everything</button>
       </div>
+      <p class="hint" id="importMsg" role="status"></p>
+    </section>
+  </aside>
 
-    </section></div></aside>
-    <section id="exportView" class="export-view" aria-label="Export artwork" hidden><div class="export-heading"><h2>Export artwork</h2><p>Choose a format, then copy or download your banner.</p></div><div class="export">
-      <div class="tabs" role="tablist" aria-label="Export format">
-        <button type="button" role="tab" aria-controls="export-content" data-tab="install">Install command</button>
-        <button type="button" role="tab" aria-controls="export-content" data-tab="agent">Agent prompt</button>
-        <button type="button" role="tab" aria-controls="export-content" data-tab="printf">printf</button>
-        <button type="button" role="tab" aria-controls="export-content" data-tab="raw">Raw ANSI</button>
-        <button type="button" role="tab" aria-controls="export-content" data-tab="png">PNG</button>
-        <button type="button" role="tab" aria-controls="export-content" data-tab="graphics">Terminal image</button>
-        <button type="button" role="tab" aria-controls="export-content" data-tab="json">Project</button>
+  <section class="stage" aria-label="Preview and export">
+    <div class="toolbar">
+      <button type="button" class="btn ghost" id="undo" disabled title="Undo (Ctrl/Cmd+Z outside text fields)">Undo</button>
+      <button type="button" class="btn ghost" id="redo" disabled title="Redo (Ctrl/Cmd+Shift+Z outside text fields)">Redo</button>
+    </div>
+    <p class="hint" id="projectMsg" role="status"></p>
+    <div class="stats" id="stats"></div>
+    <div class="preview-pair" id="previewPair">
+    <div class="term" id="term">
+      <div class="bar"><i></i><i></i><i></i><span id="termtitle">ssh oneir</span></div>
+      <div class="ruler" id="ruler"></div>
+      <div class="screen" id="screen"><canvas id="cv"></canvas><p class="empty" id="empty" hidden>Nothing to draw yet. Add some art, text or an image.</p></div>
+    </div>
+    <div class="term" id="comparison" hidden>
+      <div class="bar"><span id="referenceSize">Reference</span></div>
+      <div class="screen" id="referenceScreen"><canvas id="referenceCanvas"></canvas></div>
+    </div>
+    </div>
+    <div class="toolbar"><button type="button" class="btn ghost" id="pinComparison">Pin reference</button><button type="button" class="btn ghost" id="clearComparison">Clear reference</button></div>
+    <div class="viewctl">
+      <label><input type="checkbox" id="fit" data-k="fit"> Fit width</label>
+      <label>Zoom <input type="range" id="zoom" data-k="zoom"></label>
+      <label title="Terminal cell height divided by width. Ghostty and most fonts sit near 2.0">Cell ratio <input type="range" id="ratio" data-k="ratio"><output data-out="ratio"></output></label>
+      <label>Terminal bg <input type="color" id="termBg" data-k="termBg"></label>
+    </div>
+
+    <div class="export">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="install">Install command</button>
+        <button type="button" role="tab" data-tab="agent">Agent prompt</button>
+        <button type="button" role="tab" data-tab="printf">printf</button>
+        <button type="button" role="tab" data-tab="raw">Raw ANSI</button>
+        <button type="button" role="tab" data-tab="png">PNG</button>
+        <button type="button" role="tab" data-tab="graphics">Terminal image</button>
+        <button type="button" role="tab" data-tab="json">Project</button>
       </div>
-      <div class="exbody" id="export-content" role="tabpanel">
+      <div class="exbody">
         <div class="exhead">
           <p id="exnote"></p>
           <div class="toolbar">
@@ -159,7 +168,6 @@
       </div>
     </div>
   </section>
-  </div>
 </main>
 <script type="module" src="/src/app/main.ts"></script>
 </body>
