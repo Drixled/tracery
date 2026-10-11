@@ -124,7 +124,7 @@
           <button
             type="button"
             aria-current={tab === format.kind}
-            class="aria-[current=true]:border-l-primary aria-[current=true]:bg-raise hover:bg-raise group flex flex-none cursor-pointer flex-col gap-px rounded-md border-l-2 border-transparent px-3 py-2 text-left transition-colors motion-reduce:transition-none"
+            class="aria-[current=true]:bg-raise hover:bg-raise group flex flex-none cursor-pointer flex-col gap-px rounded-md px-3 py-2 text-left transition-colors motion-reduce:transition-none"
             onclick={() => select(format.kind)}
           >
             <b class="font-medium">{format.title}</b>
