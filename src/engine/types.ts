@@ -6,7 +6,7 @@ export type ColorDepth = 'true' | '256' | '16';
 export type ImageKeep = 'alpha' | 'dark' | 'light';
 export type GraphicsProtocol = 'kitty' | 'iterm';
 
-/** Every knob the kiln exposes. Serializable to JSON and shared by the web app and the CLI. */
+/** Every knob Tracery exposes. Serializable to JSON and shared by the web app and the CLI. */
 export interface Settings {
   src: Source;
   // ASCII source

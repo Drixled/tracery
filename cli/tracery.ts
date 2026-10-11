@@ -17,10 +17,10 @@ import {
   type Settings,
 } from '../src/engine';
 
-const HELP = `ansi-kiln: render ASCII art into a colored terminal block banner
+const HELP = `tracery: render ASCII art into a colored terminal block banner
 
 Usage
-  ansi-kiln [settings.json] [options]
+  tracery [settings.json] [options]
 
 Options
   -a, --art <file>       ASCII art to render ("-" reads stdin). Overrides the art in settings.
@@ -45,14 +45,14 @@ Settings files come from the Settings tab in the web app. Text and image
 sources need a browser, so the CLI renders the "ascii" field only.
 
 Examples
-  ansi-kiln oneir.kiln.json > /etc/motd
-  ansi-kiln --art logo.txt --palette "Hot Magenta" --mode half
-  ansi-kiln oneir.kiln.json --png oneir.png --cell 12
-  ansi-kiln oneir.kiln.json --kitty > oneir.kitty && cat oneir.kitty
-  figlet -f slant hello | ansi-kiln --art - --color 256`;
+  tracery oneir.tracery.json > /etc/motd
+  tracery --art logo.txt --palette "Hot Magenta" --mode half
+  tracery oneir.tracery.json --png oneir.png --cell 12
+  tracery oneir.tracery.json --kitty > oneir.kitty && cat oneir.kitty
+  figlet -f slant hello | tracery --art - --color 256`;
 
 function fail(msg: string): never {
-  process.stderr.write(`ansi-kiln: ${msg}\n`);
+  process.stderr.write(`tracery: ${msg}\n`);
   process.exit(1);
 }
 

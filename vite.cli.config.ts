@@ -4,11 +4,11 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   publicDir: false,
   build: {
-    ssr: 'cli/kiln.ts',
+    ssr: 'cli/tracery.ts',
     outDir: 'dist/cli',
     emptyOutDir: true,
     target: 'node20',
     minify: false,
-    rollupOptions: { output: { entryFileNames: 'kiln.js', format: 'es' } },
+    rollupOptions: { output: { entryFileNames: 'tracery.js', format: 'es' } },
   },
 });

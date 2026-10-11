@@ -1,4 +1,4 @@
-# ANSI Kiln
+# Tracery
 
 Turn ASCII art, a word, or a logo into a colored block-character banner for your terminal, then install it as your server's login message (MOTD).
 
@@ -19,7 +19,7 @@ Image ─────┘   (silhouette)  (fill, gap,   (half / quad /
 npm install
 npm run dev        # web app at http://localhost:5173
 npm test           # engine tests
-npm run build      # web app → dist/web, CLI → dist/cli/kiln.js
+npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 ```
 
 ## Web app
@@ -34,7 +34,7 @@ npm run build      # web app → dist/web, CLI → dist/cli/kiln.js
 | Image   | PNG at any cell size, transparent or on the terminal background; Kitty / Ghostty or iTerm2 inline-image output |
 | Export  | Install command, agent prompt, `printf` one-liner, raw ANSI, PNG, terminal image, settings JSON; copy or download each |
 
-Settings persist in `localStorage`, and the Settings tab exports a `.kiln.json` you can import later or hand to the CLI.
+Settings persist in `localStorage` (saved ANSI Kiln settings remain readable), and the Settings tab exports a `.tracery.json` you can import later or hand to the CLI. Existing `.kiln.json` files can still be imported.
 
 ## CLI
 
@@ -42,14 +42,14 @@ The CLI shares the same engine and renders the ASCII source, so a server can reb
 
 ```sh
 npm run build
-node dist/cli/kiln.js oneir.kiln.json > banner.ansi
-node dist/cli/kiln.js --art logo.txt --palette "Hot Magenta" --mode half
-figlet -f slant hello | node dist/cli/kiln.js --art - --color 256
-node dist/cli/kiln.js oneir.kiln.json --install   # prints an update-motd install script
-node dist/cli/kiln.js --list-palettes
+node dist/cli/tracery.js oneir.tracery.json > banner.ansi
+node dist/cli/tracery.js --art logo.txt --palette "Hot Magenta" --mode half
+figlet -f slant hello | node dist/cli/tracery.js --art - --color 256
+node dist/cli/tracery.js oneir.tracery.json --install   # prints an update-motd install script
+node dist/cli/tracery.js --list-palettes
 ```
 
-Run `node dist/cli/kiln.js --help` for every flag. `npm link` puts `ansi-kiln` on your PATH.
+Run `node dist/cli/tracery.js --help` for every flag. `npm link` puts `tracery` on your PATH.
 
 ## Installing a banner on a server
 
@@ -70,9 +70,9 @@ Block characters depend on your font drawing `▀▄▚` edge to edge. Some font
 The Terminal image tab installs both files plus `/etc/profile.d/00-<name>.sh`, which shows the image when `$TERM` is `xterm-kitty` or `xterm-ghostty` (or `$LC_TERMINAL` is `iTerm2`), falls back to blocks otherwise, and stays quiet inside tmux, which drops image escapes. Ghostty only sends `xterm-ghostty` over SSH when its terminfo is on the server, which `shell-integration-features = ssh-terminfo` handles.
 
 ```sh
-node dist/cli/kiln.js oneir.kiln.json --png oneir.png --cell 12
-node dist/cli/kiln.js oneir.kiln.json --kitty > oneir.kitty && cat oneir.kitty
-node dist/cli/kiln.js oneir.kiln.json --install-graphics
+node dist/cli/tracery.js oneir.tracery.json --png oneir.png --cell 12
+node dist/cli/tracery.js oneir.tracery.json --kitty > oneir.kitty && cat oneir.kitty
+node dist/cli/tracery.js oneir.tracery.json --install-graphics
 ```
 
 ## Terminal notes

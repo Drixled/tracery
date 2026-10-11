@@ -1,11 +1,11 @@
 {
-  "name": "ansi-kiln",
+  "name": "tracery",
   "version": "0.1.0",
   "private": true,
   "description": "Fire ASCII art, text or images into colored terminal block banners and MOTDs.",
   "type": "module",
   "bin": {
-    "ansi-kiln": "dist/cli/kiln.js"
+    "tracery": "dist/cli/tracery.js"
   },
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "kiln": "node dist/cli/kiln.js"
+    "tracery": "node dist/cli/tracery.js"
   },
   "engines": {
     "node": ">=20"

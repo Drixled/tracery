@@ -24,8 +24,8 @@ import {
 import { maskFromImage, maskFromText } from './canvas-masks';
 import { drawCells } from './preview';
 
-const STORE = 'ansi-kiln:v1';
-const TAB_STORE = 'ansi-kiln:tab';
+const STORE = 'tracery:v1';
+const TAB_STORE = 'tracery:tab';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
 let S: Settings = loadSettings();
@@ -38,14 +38,14 @@ let pngPending: number | null = null;
 
 function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(STORE);
+    const raw = localStorage.getItem(STORE) ?? localStorage.getItem('ansi-kiln:v1');
     if (raw) return normalizeSettings(JSON.parse(raw));
   } catch { /* storage unavailable or corrupt */ }
   return normalizeSettings({});
 }
 function loadTab(): ExportKind {
   try {
-    const t = localStorage.getItem(TAB_STORE);
+    const t = localStorage.getItem(TAB_STORE) ?? localStorage.getItem('ansi-kiln:tab');
     if (t && ['install', 'agent', 'printf', 'raw', 'png', 'graphics', 'json'].includes(t)) return t as ExportKind;
   } catch { /* ignore */ }
   return 'install';
@@ -419,7 +419,7 @@ $('copy').onclick = async () => {
 };
 $('download').onclick = async () => {
   const n = slug(S.name);
-  if (tab === 'json') return downloadBlob(`${n}.kiln.json`, JSON.stringify(exportableSettings(S), null, 2) + '\n', 'application/json');
+  if (tab === 'json') return downloadBlob(`${n}.tracery.json`, JSON.stringify(exportableSettings(S), null, 2) + '\n', 'application/json');
   if (tab === 'png') {
     const bytes = await ensurePng();
     if (bytes) downloadBlob(`${n}.png`, bytes, 'image/png');
@@ -493,4 +493,4 @@ update();
 document.fonts.ready.then(schedule);
 
 // Keep DEFAULTS referenced for devtools tinkering.
-(window as any).kiln = { get settings() { return S; }, defaults: DEFAULTS };
+(window as any).tracery = { get settings() { return S; }, defaults: DEFAULTS };
