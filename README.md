@@ -2,15 +2,10 @@
 
 Turn ASCII art, a word, or a logo into a colored block-character banner for your terminal, then install it as your server's login message (MOTD).
 
-It started as the "Oneir" banner and grew into a playground with presets for palettes, dithering, outlines and shadows.
-
 ```
 ASCII art ─┐
 Text  ─────┼─▶ mask ─▶ stylize ─▶ encode ─▶ ANSI ─▶ /etc/update-motd.d
-Image ─────┘   (silhouette)  (fill, gap,   (half / quad /
-                              outline,      full blocks)
-                              lip, shine,
-                              shadow)
+Image ─────┘
 ```
 
 ## Quick start
@@ -18,109 +13,56 @@ Image ─────┘   (silhouette)  (fill, gap,   (half / quad /
 ```sh
 npm install
 npm run dev        # web app at http://localhost:5173
-npm run typecheck  # svelte-check over the app, engine and CLI
+npm test           # build the CLI and run its tests
 npm run build      # type-check, then web app → dist/web, CLI → dist/cli/tracery.js
 ```
 
-## Stack
-
-- `src/engine/` is plain TypeScript with no DOM or framework. The web app and the CLI share it.
-- `src/app/` is the web app: Svelte 5 components (runes), Tailwind CSS 4 and [shadcn-svelte](https://shadcn-svelte.com) on Bits UI. `tracery.svelte.ts` holds the app state; `editor.ts`, `history.ts`, `storage.ts` and `renderer.ts` stay framework-free.
-- `src/lib/components/ui/` holds the shadcn-svelte components. They are copied into the repo, so edit them freely; add more with `npx shadcn-svelte@latest add <name>`. The theme tokens live in `src/app.css`.
-- Icons are [Heroicons](https://heroicons.com), compiled into Svelte components by `unplugin-icons`: `import XMarkIcon from '~icons/heroicons/x-mark-16-solid'`. Use the 16px solid (micro) set for UI controls. The shadcn CLI writes Lucide imports into new components, so swap those for Heroicons after adding one.
-- Vite builds both targets: `vite.config.ts` for the web app and `vite.cli.config.ts` for the Node CLI.
+To open the dev server from another device on your tailnet, run `tailscale serve --bg <port>`; `vite.config.ts` already allows `*.ts.net` hosts.
 
 ## Web app
 
-The app works like a design tool's file browser:
+**Home** (`/`) lists every banner saved in this browser. **A banner** (`/b/<id>`) shows the preview beside the Source, Color, Shape and Output controls. Edits save automatically to IndexedDB, and Undo/Redo keeps the last 50 changes.
 
-- **Home** (`/`) shows every banner in this browser, newest edit first. Click a thumbnail to open it. The `⋯` menu on each card renames, duplicates or deletes it. **New banner** and **Import** create a banner and open it.
-- **A banner** (`/b/<id>`) has its own address, so you can bookmark or reload it. The preview sits on the left and the Source, Color, Shape and Output controls on the right; drag the divider to resize them. The banner's name at the top opens a menu to rename, duplicate, download the project file or delete. **Export** opens the export formats in a dialog.
+- **Source:** ASCII art, text in 9 Google Fonts, or an image (PNG, up to 2048 px per side)
+- **Color:** 126 palette presets, generated harmonies, a gradient editor, 7 dither patterns
+- **Shape:** gap ring, outline, lip, shine, bevel, drop shadow, saved looks
+- **Output:** 80 / 103 / 120 columns; half `▀▄`, quadrant `▚` or full `██` blocks; truecolor, 256 or 16 colors
+- **Export:** install command, agent prompt, `printf` one-liner, raw ANSI, PNG, Kitty / iTerm2 image, `.tracery.json` project file
 
-Banners save themselves about half a second after each edit; there is no Save button. Opening a banner starts a fresh undo history. When hosting the built app, serve `index.html` for every path; `npm run dev` and `npm run preview` already do.
-
-| Area    | What you can change |
-|---------|---------------------|
-| Source  | Paste ASCII art, type text in 9 Google Fonts, or drop / paste an image (threshold, keep opaque, dark or light pixels, optional source colors) |
-| Palette | 126 presets in 10 categories with search, a Generate button for new color harmonies, a 1 to 6 stop ramp editor, 7 dither patterns, vertical / horizontal / diagonal / radial direction, spread, reverse, Shuffle |
-| Shape   | Gap ring, outline width and color, darker lower lip, shine dots, bevel, drop shadow with offset, plus one-click looks |
-| Output  | Fit exported art to 80, 103, or 120 columns; half blocks `▀▄`, quadrant blocks `▚`, or full blocks `██`; truecolor, xterm-256 or 16-color VGA |
-| Preview | Pin a reference beside the current design; fit to width or zoom, terminal cell ratio, background color, rulers at 80 / 103 / 120 columns |
-| Image   | PNG at any cell size, transparent or on the terminal background; Kitty / Ghostty or iTerm2 inline-image output |
-| Export  | Install command, agent prompt, `printf` one-liner, raw ANSI, PNG, terminal image, project JSON; copy or download each |
-
-Banners, their thumbnails and custom looks are stored in IndexedDB. Source images are stored once and shared by duplicates. These saves belong to this browser and site address; download a project file to move a banner elsewhere.
-
-Save a custom look to reuse its palette and shape settings with another source. Pin a reference to compare a design with later changes. The output width control changes the exported artwork; preview fit and zoom only change its display size.
-
-Drafts from older versions, in IndexedDB or `localStorage`, become a normal banner the first time you open this version. Invalid old data is kept with a recovery copy instead of being replaced. The Project file export saves a versioned `.tracery.json` file with all settings and the source image. Import it to continue later. Existing flat `.kiln.json` settings files and saved ANSI Kiln settings remain readable.
-
-Images are stored as PNGs, with a maximum of 2048 pixels on each side and 3 MB of encoded data. Larger images are resized when loaded. If browser storage is unavailable or full, the app asks you to download the project.
-
-Use Undo and Redo in the top bar to restore settings, resets, and image replacements. A slider drag counts as one edit. The app keeps the latest 50 snapshots. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z work outside text fields; text fields keep their native undo.
-
-Downloads match the selected export: install and terminal image scripts use `.sh`, agent prompts use `.txt`, raw banners use `.ansi`, and images use `.png`. The project download includes the source image. Imports reject unsupported modes, invalid colors, and values outside the control limits without creating a banner.
+Saved banners stay in this browser. To move one elsewhere, download its project file. If you host the built app, serve `index.html` for every path.
 
 ## CLI
 
-The CLI shares the browser engine and renders ASCII projects, saved image projects, and direct PNG files. Text projects need the browser to load and draw fonts. Direct PNG files must be at most 2048 pixels on each side and 10 MB. Browser image imports are converted to PNG for portable projects.
+The CLI uses the same engine as the web app. It renders ASCII projects, image projects and PNG files. Text projects need the browser to draw fonts.
 
 ```sh
-npm run build
-node dist/cli/tracery.js oneir.tracery.json > banner.ansi
+node dist/cli/tracery.js logo.tracery.json --width 80 > banner.ansi
 node dist/cli/tracery.js --art logo.txt --palette "Hot Magenta" --mode half
 figlet -f slant hello | node dist/cli/tracery.js --art - --color 256
-node dist/cli/tracery.js oneir.tracery.json --install   # prints an update-motd install script
-node dist/cli/tracery.js --image logo.png --image-colors --width 80 > logo.ansi
-node dist/cli/tracery.js logo.tracery.json --png logo.png
-node dist/cli/tracery.js --list-palettes
+node dist/cli/tracery.js logo.tracery.json --install            # update-motd install script
+node dist/cli/tracery.js logo.tracery.json --install-graphics   # terminal image install script
 ```
 
-Run `node dist/cli/tracery.js --help` for every flag. `npm link` puts `tracery` on your PATH.
+Run `--help` to see every flag. `npm link` adds `tracery` to your PATH.
 
-## Installing a banner on a server
+## Installing on a server
 
-The Install command tab produces two commands you paste into the server:
+The **Install command** export writes `/etc/tracery/<name>.ansi` and adds `/etc/update-motd.d/00-<name>`, so the banner appears at every SSH login. To remove it, run `sudo rm /etc/tracery/<name>.ansi /etc/update-motd.d/00-<name>`.
 
-1. Decode the banner from base64 into `/etc/tracery/<name>.ansi` and print it once.
-2. Add `/etc/update-motd.d/00-<name>` so it shows at every SSH login.
-
-Undo with `sudo rm /etc/tracery/<name>.ansi /etc/update-motd.d/00-<name>`.
-
-## Image mode (Kitty / Ghostty / iTerm2)
-
-Block characters depend on your font drawing `▀▄▚` edge to edge. Some fonts leave hairline gaps or stretch line height. Image mode sidesteps that: the banner is rasterized to a PNG and sent with the terminal's own image protocol, so it looks exactly like the preview.
-
-- **Kitty graphics protocol** (Kitty, Ghostty): `ESC _G a=T,f=100,q=2,c=<cols>` with the base64 PNG split into 4096-byte chunks. `c` sets the width in columns, and `q=2` keeps error replies out of your login shell.
-- **iTerm2 inline images** (OSC 1337) for iTerm2.
-
-The Terminal image tab installs both files plus `/etc/profile.d/00-<name>.sh`, which shows the image when `$TERM` is `xterm-kitty` or `xterm-ghostty` (or `$LC_TERMINAL` is `iTerm2`), falls back to blocks otherwise, and stays quiet inside tmux, which drops image escapes. Ghostty only sends `xterm-ghostty` over SSH when its terminfo is on the server, which `shell-integration-features = ssh-terminfo` handles.
-
-```sh
-node dist/cli/tracery.js oneir.tracery.json --png oneir.png --cell 12
-node dist/cli/tracery.js oneir.tracery.json --kitty > oneir.kitty && cat oneir.kitty
-node dist/cli/tracery.js oneir.tracery.json --install-graphics
-```
+The **Terminal image** export also installs `/etc/profile.d/00-<name>.sh`. It shows a pixel-exact PNG in Kitty, Ghostty and iTerm2, falls back to block characters everywhere else, and stays quiet inside tmux.
 
 ## Terminal notes
 
-- **Quadrant blocks** give the finest dither but need a font or terminal that draws `▖▗▘▝▚▞▙▛▜▟`. Ghostty, Kitty, WezTerm and iTerm2 render them natively. Fall back to half blocks if you see gaps.
-- **Width:** the update-motd script runs before your terminal reports its size, so pick a banner that fits your usual window. Use the output width control or CLI `--width 80`, `--width 103`, or `--width 120` to shrink the artwork. Smaller artwork is not enlarged. Full blocks use two columns per pixel, so their width can be one column below an odd limit.
+- **Quadrant blocks** need a font that draws `▖▗▘▝▚▞`. Ghostty, Kitty, WezTerm and iTerm2 can; if you see gaps, use half blocks.
+- **Width:** MOTD scripts run before the terminal reports its size, so pick a width that fits your usual window.
 - **Color:** use 256 or 16 colors for `screen`, older macOS Terminal, or anything without truecolor.
 
 ## Layout
 
 ```
-src/engine/   shared settings schema, masks, image sampling, styling, fitting, exports
-src/app/      editor/history, cached renderer, storage/library, controls, exports, previews
-cli/          argument parsing, PNG decoder, Node CLI bundled with the engine
+src/engine/            framework-free TypeScript shared by the app and the CLI
+src/app/               Svelte 5 web app (Tailwind 4, shadcn-svelte, Heroicons via unplugin-icons)
+src/lib/components/ui/ shadcn-svelte components, copied in; add more with `npx shadcn-svelte@latest add <name>`
+cli/                   Node CLI, bundled by vite.cli.config.ts
+test/                  CLI tests (node --test)
 ```
-
-
-## Checks
-
-```sh
-npm run build                   # TypeScript check and both production builds
-```
-
-The editor commits asynchronous image loads and imports only if no newer edit has replaced them. Undo snapshots share immutable image assets. The renderer caches source masks and reuses finished artwork for preview-only changes. Controls and imported settings use the same schema for limits and choices.

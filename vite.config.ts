@@ -9,4 +9,6 @@ export default defineConfig({
   plugins: [tailwindcss(), svelte(), icons({ compiler: 'svelte' })],
   resolve: { alias: { $lib: fileURLToPath(new URL('./src/lib', import.meta.url)) } },
   build: { outDir: 'dist/web', emptyOutDir: true },
+  // Reach the dev server over `tailscale serve` from other tailnet devices.
+  server: { allowedHosts: ['.ts.net'] },
 });
