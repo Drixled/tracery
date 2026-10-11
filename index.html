@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ANSI Kiln</title>
+  <meta name="description" content="Fire ASCII art, text or images into colored terminal block banners and MOTDs.">
+  <meta name="theme-color" content="#141113">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Silkscreen:wght@400;700&family=Press+Start+2P&family=Pixelify+Sans:wght@400;700&family=VT323&family=Bungee&family=Rubik+Mono+One&family=Shrikhand&family=Righteous&family=Bowlby+One+SC&display=swap">
+</head>
+<body>
+<header class="top">
+  <h1>ANSI Kiln</h1>
+  <p>Paste ASCII art, type a word or drop an image, fire it into terminal blocks, then install it as your MOTD.</p>
+</header>
+
+<main class="app">
+  <aside class="panel" aria-label="Controls">
+    <section class="group">
+      <h2>Source</h2>
+      <div class="seg" data-seg="src">
+        <button type="button" data-v="ascii">ASCII art</button>
+        <button type="button" data-v="text">Text</button>
+        <button type="button" data-v="image">Image</button>
+      </div>
+
+      <div id="pane-ascii" class="sub">
+        <textarea id="ascii" data-k="ascii" spellcheck="false" aria-label="ASCII art source"></textarea>
+        <div class="row"><label for="cw">Char width</label><input type="range" id="cw" data-k="cw" min="1" max="6" step="1"><output data-out="cw"></output></div>
+        <div class="row"><label for="ch">Char height</label><input type="range" id="ch" data-k="ch" min="1" max="8" step="1"><output data-out="ch"></output></div>
+        <label class="check"><input type="checkbox" id="glyph" data-k="glyph"> Shape punctuation (dots sit low, quotes sit high)</label>
+        <div class="toolbar"><button type="button" class="btn ghost" id="loadOneir">Load Oneir art</button></div>
+      </div>
+
+      <div id="pane-text" class="sub" hidden>
+        <textarea id="text" data-k="text" spellcheck="false" class="short" aria-label="Text to render"></textarea>
+        <div class="row"><label for="font">Font</label><select id="font" data-k="font">
+          <option>Shrikhand</option><option>Bowlby One SC</option><option>Bungee</option><option>Rubik Mono One</option><option>Righteous</option><option>Silkscreen</option><option>Press Start 2P</option><option>Pixelify Sans</option><option>VT323</option>
+        </select><span></span></div>
+        <div class="row"><label for="size">Height px</label><input type="range" id="size" data-k="size" min="6" max="64" step="1"><output data-out="size"></output></div>
+        <div class="row"><label for="tracking">Tracking</label><input type="range" id="tracking" data-k="tracking" min="-3" max="8" step="1"><output data-out="tracking"></output></div>
+        <div class="row"><label for="leading">Line gap</label><input type="range" id="leading" data-k="leading" min="0" max="16" step="1"><output data-out="leading"></output></div>
+        <p class="hint">Pixel fonts look crispest at multiples of 8.</p>
+      </div>
+
+      <div id="pane-image" class="sub" hidden>
+        <label class="file" id="drop"><input type="file" id="imgfile" accept="image/*"><span id="dropmsg">Drop a PNG or click to choose. Transparent logos work best.</span></label>
+        <div class="row"><label for="imgW">Width px</label><input type="range" id="imgW" data-k="imgW" min="16" max="240" step="1"><output data-out="imgW"></output></div>
+        <div class="row"><label for="thresh">Threshold</label><input type="range" id="thresh" data-k="thresh" min="1" max="99" step="1"><output data-out="thresh"></output></div>
+        <div class="row"><label for="imgUse">Keep pixels</label><select id="imgUse" data-k="imgUse">
+          <option value="alpha">Opaque</option><option value="dark">Dark</option><option value="light">Light</option>
+        </select><span></span></div>
+        <label class="check"><input type="checkbox" id="imgColors" data-k="imgColors"> Use the image's own colors for the fill</label>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>Palette <span class="h2tools"><button type="button" class="btn ghost tiny" id="generate" title="Make a new palette from a random color harmony">Generate</button><button type="button" class="btn ghost tiny" id="shuffle" title="Pick a random preset and dither">Shuffle</button></span></h2>
+      <div class="palfilter">
+        <input type="search" id="palSearch" placeholder="Search palettes" aria-label="Search palettes" spellcheck="false">
+        <select id="palCat" aria-label="Palette category"><option value="">All categories</option></select>
+      </div>
+      <div class="chips palgrid" id="palettes"></div>
+      <p class="hint" id="palCount"></p>
+      <div class="lbl">Fill ramp, top to bottom</div>
+      <div class="stops" id="stops"></div>
+      <div class="row"><label for="dither">Dither</label><select id="dither" data-k="dither">
+        <option value="bayer4">Bayer 4×4</option><option value="bayer2">Bayer 2×2</option><option value="bayer8">Bayer 8×8</option><option value="checker">Checker seam</option><option value="lines">Scanlines</option><option value="noise">Noise</option><option value="none">Hard bands</option>
+      </select><span></span></div>
+      <div class="row"><label for="dir">Direction</label><select id="dir" data-k="dir">
+        <option value="v">Vertical</option><option value="h">Horizontal</option><option value="d">Diagonal</option><option value="r">Radial</option>
+      </select><span></span></div>
+      <div class="row"><label for="spread">Ramp spread</label><input type="range" id="spread" data-k="spread" min="40" max="200" step="5"><output data-out="spread"></output></div>
+      <label class="check"><input type="checkbox" id="reverse" data-k="reverse"> Reverse ramp</label>
+    </section>
+
+    <section class="group">
+      <h2>Shape</h2>
+      <div class="chips" id="looks"></div>
+      <div class="row"><label for="gap">Gap</label><input type="range" id="gap" data-k="gap" min="0" max="3" step="1"><output data-out="gap"></output></div>
+      <div class="swrow"><label class="check"><input type="checkbox" id="gapFillOn" data-k="gapFillOn"> Fill the gap</label><input type="color" id="gapFill" data-k="gapFill" aria-label="Gap color"></div>
+      <div class="row"><label for="outline">Outline</label><input type="range" id="outline" data-k="outline" min="0" max="3" step="1"><output data-out="outline"></output></div>
+      <div class="swrow"><span class="grow">Outline color</span><input type="color" id="outlineColor" data-k="outlineColor" aria-label="Outline color"></div>
+      <div class="swrow"><label class="check"><input type="checkbox" id="lipOn" data-k="lipOn"> Darker lower lip</label><input type="color" id="lipColor" data-k="lipColor" aria-label="Lip color"></div>
+      <div class="swrow"><label class="check"><input type="checkbox" id="shineOn" data-k="shineOn"> Shine dots on left edges</label><input type="color" id="shineColor" data-k="shineColor" aria-label="Shine color"></div>
+      <div class="swrow"><label class="check"><input type="checkbox" id="bevel" data-k="bevel"> Bevel (light top, dark bottom edge)</label></div>
+      <div class="swrow"><label class="check"><input type="checkbox" id="shadowOn" data-k="shadowOn"> Drop shadow</label><input type="color" id="shadowColor" data-k="shadowColor" aria-label="Shadow color"></div>
+      <div class="pair">
+        <div class="row compact"><label for="sdx">X</label><input type="range" id="sdx" data-k="sdx" min="-4" max="4" step="1"><output data-out="sdx"></output></div>
+        <div class="row compact"><label for="sdy">Y</label><input type="range" id="sdy" data-k="sdy" min="-4" max="4" step="1"><output data-out="sdy"></output></div>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>Output</h2>
+      <div class="lbl">Block resolution</div>
+      <div class="seg" data-seg="mode">
+        <button type="button" data-v="half">Half ▀▄</button>
+        <button type="button" data-v="quad">Quadrant ▚</button>
+        <button type="button" data-v="full">Full ██</button>
+      </div>
+      <p class="hint" id="modehint"></p>
+      <div class="lbl">Color depth</div>
+      <div class="seg" data-seg="color">
+        <button type="button" data-v="true">Truecolor</button>
+        <button type="button" data-v="256">256</button>
+        <button type="button" data-v="16">16 VGA</button>
+      </div>
+      <div class="lbl">Image output (PNG and terminal graphics)</div>
+      <div class="row"><label for="pngCell">Cell px</label><input type="range" id="pngCell" data-k="pngCell" min="2" max="32" step="1"><output data-out="pngCell"></output></div>
+      <label class="check"><input type="checkbox" id="pngTransparent" data-k="pngTransparent"> Transparent background (otherwise uses Terminal bg)</label>
+      <div class="seg" data-seg="gfxProto">
+        <button type="button" data-v="kitty">Kitty / Ghostty</button>
+        <button type="button" data-v="iterm">iTerm2</button>
+      </div>
+      <div class="row"><label for="gfxCols">Show at cols</label><input type="range" id="gfxCols" data-k="gfxCols" min="0" max="200" step="1"><output id="gfxColsOut"></output></div>
+      <div class="row"><label for="name">Banner name</label><input type="text" id="name" data-k="name" spellcheck="false"><span></span></div>
+      <div class="toolbar">
+        <label class="btn ghost" for="importFile">Import settings<input type="file" id="importFile" accept="application/json,.json" class="visually-hidden"></label>
+        <button type="button" class="btn ghost" id="reset">Reset everything</button>
+      </div>
+      <p class="hint" id="importMsg" role="status"></p>
+    </section>
+  </aside>
+
+  <section class="stage" aria-label="Preview and export">
+    <div class="stats" id="stats"></div>
+    <div class="term" id="term">
+      <div class="bar"><i></i><i></i><i></i><span id="termtitle">ssh oneir</span></div>
+      <div class="ruler" id="ruler"></div>
+      <div class="screen" id="screen"><canvas id="cv"></canvas><p class="empty" id="empty" hidden>Nothing to draw yet. Add some art, text or an image.</p></div>
+    </div>
+    <div class="viewctl">
+      <label><input type="checkbox" id="fit" data-k="fit"> Fit width</label>
+      <label>Zoom <input type="range" id="zoom" data-k="zoom" min="2" max="16" step="1"></label>
+      <label title="Terminal cell height divided by width. Ghostty and most fonts sit near 2.0">Cell ratio <input type="range" id="ratio" data-k="ratio" min="1.6" max="2.4" step="0.05"><output data-out="ratio"></output></label>
+      <label>Terminal bg <input type="color" id="termBg" data-k="termBg"></label>
+    </div>
+
+    <div class="export">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="install">Install command</button>
+        <button type="button" role="tab" data-tab="agent">Agent prompt</button>
+        <button type="button" role="tab" data-tab="printf">printf</button>
+        <button type="button" role="tab" data-tab="raw">Raw ANSI</button>
+        <button type="button" role="tab" data-tab="png">PNG</button>
+        <button type="button" role="tab" data-tab="graphics">Terminal image</button>
+        <button type="button" role="tab" data-tab="json">Settings</button>
+      </div>
+      <div class="exbody">
+        <div class="exhead">
+          <p id="exnote"></p>
+          <div class="toolbar">
+            <button type="button" class="btn ghost" id="download">Download</button>
+            <button type="button" class="btn" id="copy">Copy</button>
+          </div>
+        </div>
+        <pre class="out" id="out" tabindex="0"></pre>
+        <div class="pngview" id="pngview" hidden><img id="pngimg" alt="PNG export of the banner"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="/src/app/main.ts"></script>
+</body>
+</html>
