@@ -19,6 +19,8 @@ export class History<T> {
     this.group = group;
   }
   endGroup() { this.group = undefined; }
+  /** Start over from a new baseline, as when another banner is opened. */
+  reset(value: T) { this.entries = [this.clone(value)]; this.cursor = 0; this.group = undefined; }
   undo(): T | null {
     this.endGroup();
     return this.canUndo ? this.clone(this.entries[--this.cursor]) : null;

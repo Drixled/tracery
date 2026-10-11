@@ -13,10 +13,10 @@ export class ProjectStorage {
   private knownAssets = new Set<string>();
   private loadedAssets = new Map<string, SourceImage>();
   private chain: Promise<unknown> = Promise.resolve();
-  private pending: Project | null = null;
+  private pending: { id: string; project: Project; details: () => { name: string; thumbnail: string } } | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   writes = 0;
-  constructor(private status: (message: string) => void) {
+  constructor(private status: (message: string, problem?: boolean) => void) {
     this.database = new Promise((resolve, reject) => {
       if (typeof indexedDB === 'undefined') { reject(new Error('Browser storage is unavailable. Download your project to keep it.')); return; }
       const opening = indexedDB.open('tracery', 1);
@@ -60,37 +60,49 @@ export class ProjectStorage {
     if (result.image && record.assetId) { Object.freeze(result.image); this.assets.set(result.image, record.assetId); this.loadedAssets.set(record.assetId, result.image); }
     return result;
   }
-  async loadInitial(): Promise<Project> {
+  async get(id: string): Promise<SavedProject | undefined> { return id === DRAFT ? undefined : this.read<SavedProject>('projects', id); }
+  /**
+   * Older versions kept one shared draft. Move it into a normal banner once, unless it was never edited.
+   * Returns the new banner, if one was made.
+   */
+  async migrateLegacy(): Promise<SavedProject | null> {
+    let legacy: Project | null = null;
     try {
       const draft = await this.read<SavedProject>('projects', DRAFT);
-      if (draft) return await this.project(draft);
-    } catch (e) { this.status(`Could not restore browser storage: ${(e as Error).message} Existing data was kept.`); }
+      if (draft) { legacy = await this.project(draft); }
+    } catch (e) { this.status(`Could not restore the old draft: ${(e as Error).message} Existing data was kept.`, true); return null; }
     try {
-      const raw = localStorage.getItem('tracery:v1') ?? localStorage.getItem('ansi-kiln:v1');
+      const raw = !legacy && !localStorage.getItem('tracery:migrated') ? localStorage.getItem('tracery:v1') ?? localStorage.getItem('ansi-kiln:v1') : null;
       if (raw) {
-        try { return parseProject(JSON.parse(raw)); }
+        localStorage.setItem('tracery:migrated', '1');
+        try { legacy = parseProject(JSON.parse(raw)); }
         catch (e) {
           localStorage.setItem(`tracery:recovery:${Date.now()}`, raw);
-          this.status(`Could not restore the old draft: ${(e as Error).message} A recovery copy was kept.`);
+          this.status(`Could not restore the old draft: ${(e as Error).message} A recovery copy was kept.`, true);
         }
       }
     } catch { /* Do not overwrite old storage when it cannot be read. */ }
-    return createProject(normalizeSettings({}));
+    if (!legacy) return null;
+    const blank = createProject(normalizeSettings({}));
+    const record = legacy.image || JSON.stringify(legacy.settings) !== JSON.stringify(blank.settings) ? await this.save('Untitled banner', legacy, '') : null;
+    await this.enqueue(async () => { const db = await this.database; const tx = db.transaction('projects', 'readwrite'); const done = finished(tx); tx.objectStore('projects').delete(DRAFT); await done; });
+    return record;
   }
-  queueDraft(project: Project) {
-    this.pending = project;
+  /** Autosave the open banner after a short pause. The name and thumbnail are read when the save happens. */
+  queue(id: string, project: Project, details: () => { name: string; thumbnail: string }) {
+    this.pending = { id, project, details };
     if (this.timer) clearTimeout(this.timer);
     this.status('Saving…');
-    this.timer = setTimeout(() => { void this.flushDraft().catch(e => this.status(`Could not save: ${e.message} Download your project to keep it.`)); }, 500);
+    this.timer = setTimeout(() => { void this.flush().catch(e => this.status(`Could not save: ${e.message} Download your project to keep it.`, true)); }, 500);
   }
-  async flushDraft() {
+  async flush() {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     if (!this.pending) return;
-    const project = this.pending;
+    const pending = this.pending;
     this.pending = null;
-    try { await this.saveRecord(DRAFT, 'Current draft', project, ''); this.status(this.pending ? 'Saving…' : 'Saved in this browser.'); }
-    catch (e) { if (!this.pending) this.pending = project; throw e; }
+    try { const { name, thumbnail } = pending.details(); await this.saveRecord(pending.id, name, pending.project, thumbnail); this.status(this.pending ? 'Saving…' : 'Saved'); }
+    catch (e) { if (!this.pending) this.pending = pending; throw e; }
   }
   private saveRecord(id: string, name: string, project: Project, thumbnail: string): Promise<SavedProject> {
     return this.enqueue(async () => {

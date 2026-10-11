@@ -14,14 +14,15 @@ export class ExportPanel {
   private error: { version: number; message: string } | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   constructor() {
-    try { const saved = localStorage.getItem('tracery:tab') ?? localStorage.getItem('ansi-kiln:tab'); if (TABS.includes(saved as ExportKind)) this.tab = saved as ExportKind; } catch { /* Optional tab preference. */ }
-    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.onclick = () => {
-      this.tab = button.dataset.tab as ExportKind;
-      try { localStorage.setItem('tracery:tab', this.tab); } catch { /* Optional tab preference. */ }
-      this.paint();
-    });
+    try { const saved = localStorage.getItem('tracery:tab') ?? localStorage.getItem('ansi-kiln:tab'); if (TABS.includes(saved as ExportKind)) this.tab = saved as ExportKind; } catch { /* Optional preference. */ }
+    document.querySelectorAll<HTMLButtonElement>('[data-format]').forEach(button => button.onclick = () => this.select(button.dataset.format as ExportKind));
     $('copy').onclick = () => { void this.copy(); };
     $('download').onclick = () => { void this.download().catch(e => { $('exnote').textContent = e.message; }); };
+  }
+  select(tab: ExportKind) {
+    this.tab = tab;
+    try { localStorage.setItem('tracery:tab', tab); } catch { /* Optional preference. */ }
+    this.paint();
   }
   update(project: Project, result: RenderResult) {
     const S = project.settings;
@@ -60,7 +61,8 @@ export class ExportPanel {
   }
   private paint() {
     if (!this.project) return;
-    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === this.tab)));
+    document.querySelectorAll<HTMLElement>('[data-format]').forEach(button => { if (button.dataset.format === this.tab) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current'); });
+    document.querySelectorAll<HTMLElement>('[data-for]').forEach(option => { option.hidden = !option.dataset.for!.split(' ').includes(this.tab); });
     const fresh = this.png?.version === this.version ? this.png : null;
     if (this.needsPng() && this.result.lines && !fresh && this.error?.version !== this.version) {
       if (this.timer) clearTimeout(this.timer);

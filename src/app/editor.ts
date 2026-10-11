@@ -3,7 +3,8 @@ import { History } from './history';
 
 const clone = (p: Project): Project => ({ ...p, settings: { ...p.settings, stops: p.settings.stops.slice() }, image: p.image });
 const equal = (a: Project, b: Project) => a.image === b.image && (Object.keys(a.settings) as (keyof Settings)[]).every(key => key === 'stops' ? a.settings.stops.length === b.settings.stops.length && a.settings.stops.every((v, i) => v === b.settings.stops[i]) : a.settings[key] === b.settings[key]);
-export type EditorEvent = 'change' | 'busy';
+/** 'load' is a newly opened banner: it is not an edit, so it is not saved or recorded. */
+export type EditorEvent = 'change' | 'busy' | 'load';
 
 /** Every edit cancels pending image work. History moves only after a successful restore. */
 export class Editor<TImage> {
@@ -13,6 +14,7 @@ export class Editor<TImage> {
   private listeners = new Set<(event: EditorEvent) => void>();
   readonly history: History<Project>;
   busy = false;
+  private loading = false;
   constructor(initial: Project, private decode: (source: SourceImage) => Promise<TImage>) {
     this.current = clone(initial);
     if (this.current.image) Object.freeze(this.current.image);
@@ -39,8 +41,9 @@ export class Editor<TImage> {
     if (this.current.image) Object.freeze(this.current.image);
     this.image = image;
     this.busy = false;
-    if (record) this.history.record(this.current);
-    this.emit('change');
+    if (this.loading) this.history.reset(this.current);
+    else if (record) this.history.record(this.current);
+    this.emit(this.loading ? 'load' : 'change');
   }
   async restore(next: Project, mode: 'edit' | 'undo' | 'redo' | 'initial' = 'edit'): Promise<boolean> {
     const settings = validateSettings(next.settings);
@@ -54,6 +57,11 @@ export class Editor<TImage> {
       this.commit({ ...next, settings, image: sameImage ? this.current.image : next.image }, decoded, mode === 'edit');
       return true;
     } finally { if (revision === this.revision && this.busy) { this.busy = false; this.emit('busy'); } }
+  }
+  /** Open another banner with a fresh undo history. */
+  async load(next: Project): Promise<boolean> {
+    this.loading = true;
+    try { return await this.restore(next, 'initial'); } finally { this.loading = false; }
   }
   async importProject(load: () => Promise<Project>): Promise<boolean> {
     const revision = this.begin();

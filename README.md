@@ -24,6 +24,13 @@ npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 
 ## Web app
 
+The app works like a design tool's file browser:
+
+- **Home** (`/`) shows every banner in this browser, newest edit first. Click a thumbnail to open it. The `⋯` menu on each card renames, duplicates or deletes it. **New banner** and **Import** create a banner and open it.
+- **A banner** (`/b/<id>`) has its own address, so you can bookmark or reload it. The preview sits on the left and the Source, Color, Shape and Output controls on the right. The banner's name at the top opens a menu to rename, duplicate, download the project file or delete. **Export** opens the export formats in a dialog.
+
+Banners save themselves about half a second after each edit; there is no Save button. Opening a banner starts a fresh undo history. When hosting the built app, serve `index.html` for every path; `npm run dev` and `npm run preview` already do.
+
 | Area    | What you can change |
 |---------|---------------------|
 | Source  | Paste ASCII art, type text in 9 Google Fonts, or drop / paste an image (threshold, keep opaque, dark or light pixels, optional source colors) |
@@ -34,17 +41,17 @@ npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 | Image   | PNG at any cell size, transparent or on the terminal background; Kitty / Ghostty or iTerm2 inline-image output |
 | Export  | Install command, agent prompt, `printf` one-liner, raw ANSI, PNG, terminal image, project JSON; copy or download each |
 
-The project library saves named designs with thumbnails. You can open, update, rename, duplicate, and delete them. The current draft saves after a short pause. Projects and custom looks use IndexedDB. Source images are stored once and shared by the draft and library copies. These saves belong to this browser and site address; export a project file to move it elsewhere.
+Banners, their thumbnails and custom looks are stored in IndexedDB. Source images are stored once and shared by duplicates. These saves belong to this browser and site address; download a project file to move a banner elsewhere.
 
 Save a custom look to reuse its palette and shape settings with another source. Pin a reference to compare a design with later changes. The output width control changes the exported artwork; preview fit and zoom only change its display size.
 
-Old `localStorage` drafts are read automatically. Invalid old data is kept with a recovery copy instead of being replaced. The Project tab exports a versioned `.tracery.json` file with all settings and the source image. Import it to continue later. Existing flat `.kiln.json` settings files and saved ANSI Kiln settings remain readable.
+Drafts from older versions, in IndexedDB or `localStorage`, become a normal banner the first time you open this version. Invalid old data is kept with a recovery copy instead of being replaced. The Project file export saves a versioned `.tracery.json` file with all settings and the source image. Import it to continue later. Existing flat `.kiln.json` settings files and saved ANSI Kiln settings remain readable.
 
 Images are stored as PNGs, with a maximum of 2048 pixels on each side and 3 MB of encoded data. Larger images are resized when loaded. If browser storage is unavailable or full, the app asks you to download the project.
 
-Use Undo and Redo above the preview to restore settings, imported projects, resets, and image replacements. A slider drag counts as one edit. The app keeps the latest 50 snapshots. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z work outside text fields; text fields keep their native undo.
+Use Undo and Redo in the top bar to restore settings, resets, and image replacements. A slider drag counts as one edit. The app keeps the latest 50 snapshots. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z work outside text fields; text fields keep their native undo.
 
-Downloads match the selected export: install and terminal image scripts use `.sh`, agent prompts use `.txt`, raw banners use `.ansi`, and images use `.png`. The project download includes the source image. Imports reject unsupported modes, invalid colors, and values outside the control limits without replacing the current project.
+Downloads match the selected export: install and terminal image scripts use `.sh`, agent prompts use `.txt`, raw banners use `.ansi`, and images use `.png`. The project download includes the source image. Imports reject unsupported modes, invalid colors, and values outside the control limits without creating a banner.
 
 ## CLI
 
