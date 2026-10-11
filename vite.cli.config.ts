@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 // Bundles the CLI and the shared engine into one Node ESM file.
 export default defineConfig({
   publicDir: false,
+  ssr: { noExternal: ['pngjs'] },
   build: {
     ssr: 'cli/tracery.ts',
     outDir: 'dist/cli',

@@ -51,6 +51,8 @@ export interface Settings {
   mode: BlockMode;
   color: ColorDepth;
   name: string;
+  /** Maximum exported width; 0 keeps the original width. */
+  targetCols: number;
   // Image output (PNG, Kitty / iTerm2 inline graphics)
   /** Width of one terminal cell in PNG pixels. */
   pngCell: number;

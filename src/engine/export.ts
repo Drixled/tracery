@@ -36,6 +36,7 @@ export function exportableSettings(S: Settings): Partial<Settings> {
 }
 
 export function buildExport(kind: ExportKind, S: Settings, r: RenderResult, extras: ExportExtras = {}): ExportText {
+  if (kind === 'json') return { note: 'Your complete project, including the source image. Import it here to continue. ASCII and image projects also work with the CLI.', text: JSON.stringify(extras.project ?? exportableSettings(S), null, 2) };
   const n = slug(S.name);
   const dir = `/etc/${n}`;
   const file = `${dir}/banner.ansi`;

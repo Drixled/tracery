@@ -1,5 +1,6 @@
 import { createQuantizer } from './color';
 import { encode, toAnsi } from './encode';
+import { fitPixels } from './fit';
 import { stylize } from './stylize';
 import type { Cell, Mask, Settings } from './types';
 
@@ -19,7 +20,7 @@ export function render(mask: Mask | null, settings: Settings): RenderResult {
   const q = createQuantizer(settings.color);
   const img = stylize(mask, settings, q);
   if (!img) return EMPTY;
-  const rows = encode(img, settings.mode);
+  const rows = encode(fitPixels(img, settings.mode, settings.targetCols), settings.mode);
   if (!rows.length) return EMPTY;
   const ansi = toAnsi(rows, q);
   return {

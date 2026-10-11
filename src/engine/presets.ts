@@ -1,3 +1,4 @@
+import { settingError } from './settings-schema';
 import { PALETTES } from './palettes';
 import type { Look, Settings } from './types';
 
@@ -35,47 +36,10 @@ export const DEFAULTS: Settings = {
   gap: 1, gapFillOn: false, gapFill: '#000000', outline: 1, outlineColor: K.outlineColor,
   lipOn: true, lipColor: K.lipColor, shineOn: true, shineColor: K.shineColor, bevel: false,
   shadowOn: false, shadowColor: K.shadowColor, sdx: 2, sdy: 1,
-  mode: 'quad', color: 'true', name: 'oneir',
+  mode: 'quad', color: 'true', name: 'oneir', targetCols: 0,
   pngCell: 8, pngTransparent: true, gfxProto: 'kitty', gfxCols: 0,
   fit: true, zoom: 6, ratio: 2, termBg: '#0c0c0c',
 };
-
-const HEX = /^#[0-9a-f]{6}$/i;
-const ENUMS: Partial<Record<keyof Settings, readonly string[]>> = {
-  src: ['ascii', 'text', 'image'], mode: ['half', 'quad', 'full'], color: ['true', '256', '16'],
-  dither: ['bayer4', 'bayer2', 'bayer8', 'checker', 'lines', 'noise', 'none'],
-  dir: ['v', 'h', 'd', 'r'], imgUse: ['alpha', 'dark', 'light'], gfxProto: ['kitty', 'iterm'],
-  font: ['Shrikhand', 'Bowlby One SC', 'Bungee', 'Rubik Mono One', 'Righteous', 'Silkscreen', 'Press Start 2P', 'Pixelify Sans', 'VT323'],
-};
-const RANGES: Partial<Record<keyof Settings, readonly [number, number, boolean?]>> = {
-  cw: [1, 6, true], ch: [1, 8, true], size: [6, 64, true], tracking: [-3, 8, true], leading: [0, 16, true],
-  imgW: [16, 240, true], thresh: [1, 99, true], spread: [40, 200], gap: [0, 3, true], outline: [0, 3, true],
-  sdx: [-4, 4, true], sdy: [-4, 4, true], pngCell: [1, 32, true], gfxCols: [0, 200, true],
-  zoom: [1, 16, true], ratio: [1.6, 2.4],
-};
-const COLORS = new Set(['gapFill', 'outlineColor', 'lipColor', 'shineColor', 'shadowColor', 'termBg']);
-
-function validSetting(key: keyof Settings, value: unknown): boolean {
-  if (key === 'stops') return Array.isArray(value) && value.length >= 1 && value.length <= 6 && value.every(v => typeof v === 'string' && HEX.test(v));
-  const options = ENUMS[key];
-  if (options) return typeof value === 'string' && options.includes(value);
-  const range = RANGES[key];
-  if (range) return typeof value === 'number' && Number.isFinite(value) && value >= range[0] && value <= range[1] && (!range[2] || Number.isInteger(value));
-  if (COLORS.has(key)) return typeof value === 'string' && HEX.test(value);
-  if (typeof value !== typeof DEFAULTS[key]) return false;
-  if (typeof value === 'string') {
-    if (key === 'ascii') {
-      const lines = value.replace(/\t/g, '    ').split('\n');
-      return value.length <= 32768 && lines.length <= 256 && lines.every(line => Array.from(line).length <= 512);
-    }
-    if (key === 'text') {
-      const lines = value.split('\n');
-      return value.length <= 2048 && lines.length <= 32 && lines.every(line => Array.from(line).length <= 128);
-    }
-    return value.length <= 128;
-  }
-  return true;
-}
 
 /** Normalize stored settings. Invalid values use defaults; unknown keys are ignored. */
 export function normalizeSettings(input: unknown): Settings {
@@ -84,7 +48,7 @@ export function normalizeSettings(input: unknown): Settings {
   const src = input as Record<string, unknown>;
   for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
     const value = src[key];
-    if (value !== undefined && validSetting(key, value)) {
+    if (value !== undefined && settingError(key, value) === null) {
       (out as unknown as Record<string, unknown>)[key] = Array.isArray(value) ? value.slice() : value;
     }
   }
@@ -98,7 +62,7 @@ export function validateSettings(input: unknown): Settings {
   const keys = Object.keys(DEFAULTS) as (keyof Settings)[];
   if (Object.keys(src).length && !keys.some(key => Object.hasOwn(src, key))) throw new Error('No Tracery settings were found.');
   for (const key of keys) {
-    if (Object.hasOwn(src, key) && !validSetting(key, src[key])) throw new Error(`Invalid setting: ${key}. Use a supported value within the control limits.`);
+    if (Object.hasOwn(src, key)) { const error = settingError(key, src[key]); if (error) throw new Error(error); }
   }
   return normalizeSettings(src);
 }

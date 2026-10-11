@@ -1,159 +1,99 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from 'node:fs';
-import { parseArgs } from 'node:util';
 import { deflateSync } from 'node:zlib';
-import {
-  PALETTES,
-  buildExport,
-  encodePng,
-  graphicsSequence,
-  gfxColumns,
-  rasterizeCells,
-  maskFromAscii,
-  parseProject,
-  validateSettings,
-  render,
-  type BlockMode,
-  type ColorDepth,
-  type Settings,
-} from '../src/engine';
+import { PALETTES, buildExport, encodePng, graphicsSequence, gfxColumns, rasterizeCells, maskFromAscii, maskFromRgba, render, parseProject, validateSettings, type Settings, type Mask } from '../src/engine';
+import { parseCli, numericOption } from './args';
+import { decodePng } from './image';
 
-const HELP = `tracery: render ASCII art into a colored terminal block banner
+const HELP = `tracery: render ASCII art or PNG images into colored terminal banners
 
 Usage
-  tracery [settings.json] [options]
+  tracery [project.json] [options]
 
 Options
-  -a, --art <file>       ASCII art to render ("-" reads stdin). Overrides the art in settings.
-  -p, --palette <name>   Palette preset, e.g. "Kiln Ramp" (see --list-palettes)
-  -m, --mode <mode>      half | quad | full
-  -c, --color <depth>    true | 256 | 16
-  -n, --name <name>      Banner name used in install paths (default: from settings)
-  -o, --out <file>       Write the result to a file instead of stdout
-      --install          Print a shell install script for update-motd instead of the banner
-      --agent            Print an agent prompt instead of the banner
-      --png <file>       Also write a PNG of the banner
-      --cell <px>        PNG cell width in pixels (default: settings pngCell, 8)
-      --kitty            Print a Kitty graphics escape sequence (Kitty, Ghostty) instead of blocks
-      --iterm            Print an iTerm2 inline-image sequence instead of blocks
-      --cols <n>         Display width in columns for --kitty / --iterm (default: banner width)
-      --install-graphics Print an install script that shows the image on capable terminals
-      --info             Print size information to stderr
-      --list-palettes    List palette names and exit
-  -h, --help             Show this help
+  -a, --art <file>        ASCII art file ("-" reads stdin)
+      --image <file>      PNG source; overrides the source in the project
+      --image-colors      Use source image colors instead of the palette
+  -p, --palette <name>    Palette preset (see --list-palettes)
+  -m, --mode <mode>       half | quad | full
+  -c, --color <depth>     true | 256 | 16
+  -n, --name <name>       Banner name used in install paths
+  -o, --out <file>        Write output to a file
+      --width <cols>      Maximum exported width: 0 (original), 80, 103, or 120
+      --install           Print an update-motd install script
+      --agent             Print an agent prompt
+      --png <file>        Also write a PNG (alone, suppresses ANSI on stdout)
+      --cell <px>         PNG cell width: integer from 1 to 32
+      --kitty             Print a Kitty / Ghostty graphics sequence
+      --iterm             Print an iTerm2 graphics sequence
+      --cols <n>          Terminal image display width: 0 (auto) to 200
+      --install-graphics  Print a terminal image install script
+      --info              Print output dimensions to stderr
+      --list-palettes     List palette names
+  -h, --help              Show help
 
-Project files come from the Project tab in the web app. Text and image
-sources need a browser, so the CLI renders the "ascii" field only.
+Project files come from the browser app. ASCII and saved image projects work
+with this CLI. Text sources need the browser's font renderer.
+Choose one output mode; --png can add an image to any mode.
 
 Examples
-  tracery oneir.tracery.json > /etc/motd
-  tracery --art logo.txt --palette "Hot Magenta" --mode half
-  tracery oneir.tracery.json --png oneir.png --cell 12
-  tracery oneir.tracery.json --kitty > oneir.kitty && cat oneir.kitty
-  figlet -f slant hello | tracery --art - --color 256`;
-
-function fail(msg: string): never {
-  process.stderr.write(`tracery: ${msg}\n`);
-  process.exit(1);
+  tracery logo.tracery.json --width 80 > banner.ansi
+  tracery --image logo.png --image-colors --mode half
+  tracery --art logo.txt --palette "Hot Magenta" --png logo.png
+  figlet -f slant hello | tracery --art - --color 256
+`;
+function read(path: string): Buffer {
+  try { return readFileSync(path === '-' ? 0 : path); }
+  catch (e) { throw new Error(`Could not read ${path}: ${(e as Error).message}`); }
 }
-
-const { values, positionals } = parseArgs({
-  allowPositionals: true,
-  options: {
-    art: { type: 'string', short: 'a' },
-    palette: { type: 'string', short: 'p' },
-    mode: { type: 'string', short: 'm' },
-    color: { type: 'string', short: 'c' },
-    name: { type: 'string', short: 'n' },
-    out: { type: 'string', short: 'o' },
-    install: { type: 'boolean' },
-    agent: { type: 'boolean' },
-    png: { type: 'string' },
-    cell: { type: 'string' },
-    kitty: { type: 'boolean' },
-    iterm: { type: 'boolean' },
-    cols: { type: 'string' },
-    'install-graphics': { type: 'boolean' },
-    info: { type: 'boolean' },
-    'list-palettes': { type: 'boolean' },
-    help: { type: 'boolean', short: 'h' },
-  },
-});
-
-if (values.help) {
-  process.stdout.write(HELP + '\n');
-  process.exit(0);
+function write(path: string, value: string | Uint8Array) {
+  try { writeFileSync(path, value); }
+  catch (e) { throw new Error(`Could not write ${path}: ${(e as Error).message}`); }
 }
-if (values['list-palettes']) {
-  process.stdout.write(PALETTES.map((p) => p.name).join('\n') + '\n');
-  process.exit(0);
-}
-
-let raw: unknown = {};
-if (positionals[0]) {
-  try {
-    raw = JSON.parse(readFileSync(positionals[0], 'utf8'));
-  } catch (e) {
-    fail(`couldn't read settings from ${positionals[0]}: ${(e as Error).message}`);
+async function main() {
+  const { values, positionals } = parseCli();
+  if (values.help) { process.stdout.write(HELP); return; }
+  if (values['list-palettes']) { process.stdout.write(PALETTES.map(p => p.name).join('\n') + '\n'); return; }
+  let raw: unknown = {};
+  if (positionals[0]) {
+    try { raw = JSON.parse(read(positionals[0]).toString('utf8')); }
+    catch (e) { throw new Error(`Could not load project ${positionals[0]}: ${(e as Error).message}`); }
   }
+  const project = parseProject(raw);
+  let S: Settings = project.settings;
+  if (values.art) Object.assign(S, { src: 'ascii', ascii: read(values.art).toString('utf8') });
+  if (values.image) S.src = 'image';
+  if (values.palette) {
+    const palette = PALETTES.find(p => p.name.toLowerCase() === values.palette!.toLowerCase());
+    if (!palette) throw new Error(`Unknown palette "${values.palette}". Run --list-palettes.`);
+    Object.assign(S, { palette: palette.name, stops: palette.stops.slice(), outlineColor: palette.outlineColor, lipColor: palette.lipColor, shineColor: palette.shineColor, shadowColor: palette.shadowColor });
+    if (palette.dither) S.dither = palette.dither;
+  }
+  const overrides: Record<string, unknown> = {};
+  for (const key of ['mode', 'color', 'name'] as const) if (values[key] !== undefined) overrides[key] = values[key];
+  if (values.cell !== undefined) overrides.pngCell = numericOption('cell', 'pngCell', values.cell);
+  if (values.cols !== undefined) overrides.gfxCols = numericOption('cols', 'gfxCols', values.cols);
+  if (values.width !== undefined) overrides.targetCols = numericOption('width', 'targetCols', values.width);
+  if (values.iterm) overrides.gfxProto = 'iterm';
+  if (values.kitty) overrides.gfxProto = 'kitty';
+  if (values['image-colors']) overrides.imgColors = true;
+  S = validateSettings({ ...S, ...overrides });
+  let mask: Mask | null;
+  if (S.src === 'ascii') mask = maskFromAscii(S.ascii, S);
+  else if (S.src === 'image') {
+    const bytes = values.image ? read(values.image) : project.image ? Buffer.from(project.image.dataUrl.split(',')[1], 'base64') : null;
+    if (!bytes) throw new Error('This image project has no source image. Pass --image logo.png.');
+    mask = maskFromRgba(decodePng(bytes), S);
+  } else throw new Error('Text projects need the web app. Pass --art or --image to replace the source.');
+  const result = render(mask, S);
+  if (!result.lines) throw new Error('Nothing to draw. The source is empty.');
+  const wantsPng = !!(values.png || values.kitty || values.iterm || values['install-graphics']);
+  const png = wantsPng ? await encodePng(rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg), data => new Uint8Array(deflateSync(data, { level: 9 }))) : undefined;
+  if (values.png && png) write(values.png, png);
+  const output = values['install-graphics'] ? buildExport('graphics', S, result, { png }).text + '\n' : values.kitty || values.iterm ? graphicsSequence(S.gfxProto, png!, gfxColumns(S, result)) : values.install ? buildExport('install', S, result).text + '\n' : values.agent ? buildExport('agent', S, result).text + '\n' : result.ansi;
+  if (values.out) write(values.out, output);
+  else if (!(values.png && !values.kitty && !values.iterm && !values.install && !values.agent && !values['install-graphics'])) process.stdout.write(output);
+  if (values.info) process.stderr.write(`${result.cols}×${result.lines} cells, ${result.bytes} bytes, ${S.mode} blocks, ${S.color} color${png ? `, PNG ${png.length} bytes` : ''}\n`);
 }
-let S: Settings;
-try { S = parseProject(raw).settings; } catch (e) { fail((e as Error).message); }
-
-if (values.art) {
-  S.ascii = readFileSync(values.art === '-' ? 0 : values.art, 'utf8');
-  S.src = 'ascii';
-}
-if (S.src !== 'ascii') fail(`settings use the "${S.src}" source, which needs the web app. Switch to ASCII art or pass --art.`);
-
-if (values.palette) {
-  const p = PALETTES.find((x) => x.name.toLowerCase() === values.palette!.toLowerCase());
-  if (!p) fail(`unknown palette "${values.palette}". Run --list-palettes to see the names.`);
-  Object.assign(S, { palette: p.name, stops: p.stops.slice(), outlineColor: p.outlineColor, lipColor: p.lipColor, shineColor: p.shineColor, shadowColor: p.shadowColor });
-  if (p.dither) S.dither = p.dither;
-}
-if (values.mode) {
-  if (!['half', 'quad', 'full'].includes(values.mode)) fail('--mode must be half, quad or full');
-  S.mode = values.mode as BlockMode;
-}
-if (values.color) {
-  if (!['true', '256', '16'].includes(values.color)) fail('--color must be true, 256 or 16');
-  S.color = values.color as ColorDepth;
-}
-if (values.name) S.name = values.name;
-
-if (values.cell) S.pngCell = Math.max(1, Number(values.cell) || S.pngCell);
-if (values.cols) S.gfxCols = Math.max(1, Number(values.cols) || 0);
-if (values.iterm) S.gfxProto = 'iterm';
-if (values.kitty) S.gfxProto = 'kitty';
-
-try { validateSettings(S); } catch (e) { fail((e as Error).message); }
-let result;
-try { result = render(maskFromAscii(S.ascii, S), S); } catch (e) { fail((e as Error).message); }
-if (!result.lines) fail('nothing to draw. The art is empty.');
-
-const wantsPng = !!(values.png || values.kitty || values.iterm || values['install-graphics']);
-let png: Uint8Array | undefined;
-try {
-  if (wantsPng) png = await encodePng(rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg), (d) => new Uint8Array(deflateSync(d, { level: 9 })));
-} catch (e) { fail((e as Error).message); }
-if (values.png && png) writeFileSync(values.png, png);
-
-const output = values['install-graphics']
-  ? buildExport('graphics', S, result, { png }).text + '\n'
-  : values.kitty || values.iterm
-    ? graphicsSequence(S.gfxProto, png!, gfxColumns(S, result))
-    : values.install
-      ? buildExport('install', S, result).text + '\n'
-      : values.agent
-        ? buildExport('agent', S, result).text + '\n'
-        : result.ansi;
-
-if (values.out) writeFileSync(values.out, output);
-else {
-  // `--png file` on its own just writes the image; any other mode prints its output.
-  const pngOnly = values.png && !values.kitty && !values.iterm && !values.install && !values.agent && !values['install-graphics'];
-  if (!pngOnly) process.stdout.write(output);
-}
-
-if (values.info) process.stderr.write(`${result.cols}×${result.lines} cells, ${result.bytes} bytes, ${S.mode} blocks, ${S.color} color${png ? `, PNG ${png.length} bytes` : ''}\n`);
+process.stdout.on('error', error => { if ((error as NodeJS.ErrnoException).code === 'EPIPE') process.exit(0); process.stderr.write(`tracery: ${error.message}\n`); process.exit(1); });
+void main().catch(error => { process.stderr.write(`tracery: ${(error as Error).message}\n`); process.exitCode = 1; });

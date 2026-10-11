@@ -18,7 +18,7 @@ Image ─────┘   (silhouette)  (fill, gap,   (half / quad /
 ```sh
 npm install
 npm run dev        # web app at http://localhost:5173
-npm test           # engine tests
+npm test           # engine and editor tests
 npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 ```
 
@@ -29,12 +29,16 @@ npm run build      # web app → dist/web, CLI → dist/cli/tracery.js
 | Source  | Paste ASCII art, type text in 9 Google Fonts, or drop / paste an image (threshold, keep opaque, dark or light pixels, optional source colors) |
 | Palette | 126 presets in 10 categories with search, a Generate button for new color harmonies, a 1 to 6 stop ramp editor, 7 dither patterns, vertical / horizontal / diagonal / radial direction, spread, reverse, Shuffle |
 | Shape   | Gap ring, outline width and color, darker lower lip, shine dots, bevel, drop shadow with offset, plus one-click looks |
-| Output  | Half blocks `▀▄`, quadrant blocks `▚`, or full blocks `██`; truecolor, xterm-256 or 16-color VGA |
-| Preview | Fit to width or zoom, terminal cell ratio, background color, rulers at 80 / 103 / 120 columns |
+| Output  | Fit exported art to 80, 103, or 120 columns; half blocks `▀▄`, quadrant blocks `▚`, or full blocks `██`; truecolor, xterm-256 or 16-color VGA |
+| Preview | Pin a reference beside the current design; fit to width or zoom, terminal cell ratio, background color, rulers at 80 / 103 / 120 columns |
 | Image   | PNG at any cell size, transparent or on the terminal background; Kitty / Ghostty or iTerm2 inline-image output |
 | Export  | Install command, agent prompt, `printf` one-liner, raw ANSI, PNG, terminal image, project JSON; copy or download each |
 
-Projects persist in `localStorage`, including the source image. The Project tab exports a versioned `.tracery.json` file with all settings and the source image. Import it to continue later. Existing flat `.kiln.json` settings files and saved ANSI Kiln settings remain readable.
+The project library saves named designs with thumbnails. You can open, update, rename, duplicate, and delete them. The current draft saves after a short pause. Projects and custom looks use IndexedDB. Source images are stored once and shared by the draft and library copies. These saves belong to this browser and site address; export a project file to move it elsewhere.
+
+Save a custom look to reuse its palette and shape settings with another source. Pin a reference to compare a design with later changes. The output width control changes the exported artwork; preview fit and zoom only change its display size.
+
+Old `localStorage` drafts are read automatically. Invalid old data is kept with a recovery copy instead of being replaced. The Project tab exports a versioned `.tracery.json` file with all settings and the source image. Import it to continue later. Existing flat `.kiln.json` settings files and saved ANSI Kiln settings remain readable.
 
 Images are stored as PNGs, with a maximum of 2048 pixels on each side and 3 MB of encoded data. Larger images are resized when loaded. If browser storage is unavailable or full, the app asks you to download the project.
 
@@ -44,7 +48,7 @@ Downloads match the selected export: install and terminal image scripts use `.sh
 
 ## CLI
 
-The CLI shares the same engine and renders the ASCII source, so a server can rebuild a banner without a browser.
+The CLI shares the browser engine and renders ASCII projects, saved image projects, and direct PNG files. Text projects need the browser to load and draw fonts. Direct PNG files must be at most 2048 pixels on each side and 10 MB. Browser image imports are converted to PNG for portable projects.
 
 ```sh
 npm run build
@@ -52,6 +56,8 @@ node dist/cli/tracery.js oneir.tracery.json > banner.ansi
 node dist/cli/tracery.js --art logo.txt --palette "Hot Magenta" --mode half
 figlet -f slant hello | node dist/cli/tracery.js --art - --color 256
 node dist/cli/tracery.js oneir.tracery.json --install   # prints an update-motd install script
+node dist/cli/tracery.js --image logo.png --image-colors --width 80 > logo.ansi
+node dist/cli/tracery.js logo.tracery.json --png logo.png
 node dist/cli/tracery.js --list-palettes
 ```
 
@@ -84,14 +90,29 @@ node dist/cli/tracery.js oneir.tracery.json --install-graphics
 ## Terminal notes
 
 - **Quadrant blocks** give the finest dither but need a font or terminal that draws `▖▗▘▝▚▞▙▛▜▟`. Ghostty, Kitty, WezTerm and iTerm2 render them natively. Fall back to half blocks if you see gaps.
-- **Width:** the update-motd script runs before your terminal reports its size, so pick a banner that fits your usual window. The stats bar flags anything over 80 or 120 columns.
+- **Width:** the update-motd script runs before your terminal reports its size, so pick a banner that fits your usual window. Use the output width control or CLI `--width 80`, `--width 103`, or `--width 120` to shrink the artwork. Smaller artwork is not enlarged. Full blocks use two columns per pixel, so their width can be one column below an odd limit.
 - **Color:** use 256 or 16 colors for `screen`, older macOS Terminal, or anything without truecolor.
 
 ## Layout
 
 ```
-src/engine/   pure TypeScript, no DOM: masks, stylize, encode, quantize, presets, exports
-src/app/      browser UI: canvas text/image masks, preview painter, wiring
-cli/          Node CLI bundled with the engine
-test/         vitest suite for the engine
+src/engine/   shared settings schema, masks, image sampling, styling, fitting, exports
+src/app/      editor/history, cached renderer, storage/library, controls, exports, previews
+cli/          argument parsing, PNG decoder, Node CLI bundled with the engine
+test/         unit tests plus CLI and browser regression suites
 ```
+
+
+## Checks
+
+```sh
+npm test                        # engine, editor, schema, cache, and image unit tests
+npm run build                   # TypeScript check and both production builds
+npm run test:cli                 # built CLI, errors, image projects, and PNG output
+npx playwright install chromium --only-shell  # first browser test setup
+npm run test:browser             # project reload/import, library, looks, exports, undo, caching
+```
+
+Browser tests start their own local server on port 5176 and use fresh browser contexts. They do not need external fonts or a deployed site. A failed browser check saves a screenshot in `output/playwright/failure.png`. No CI setup is required.
+
+The editor commits asynchronous image loads and imports only if no newer edit has replaced them. Undo snapshots share immutable image assets. The renderer caches source masks and reuses finished artwork for preview-only changes. Controls and imported settings use the same schema for limits and choices.

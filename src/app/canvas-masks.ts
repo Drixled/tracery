@@ -1,4 +1,4 @@
-import { checkMaskSize, pxAspect, rgb2hex, type Mask, type Settings } from '../engine';
+import { checkMaskSize, pxAspect, type Mask, type Settings } from '../engine';
 
 /** Rasterize text with a web font into a silhouette, pre-stretched so pixels come out square in the terminal. */
 export function maskFromText(S: Settings): Mask | null {
@@ -33,29 +33,4 @@ export function maskFromText(S: Settings): Mask | null {
   const F = new Uint8Array(W * H);
   for (let i = 0; i < W * H; i++) F[i] = d[i * 4 + 3] >= 128 ? 1 : 0;
   return { W, H, F };
-}
-
-/** Downsample an image into a silhouette plus its own colors. */
-export function maskFromImage(img: HTMLImageElement | null, S: Settings): Mask | null {
-  if (!img) return null;
-  const W = S.imgW;
-  const H = Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * W * pxAspect(S.mode, S.ratio)));
-  const cv = document.createElement('canvas');
-  checkMaskSize(W, H);
-  cv.width = W;
-  cv.height = H;
-  const x = cv.getContext('2d', { willReadFrequently: true })!;
-  x.imageSmoothingQuality = 'high';
-  x.drawImage(img, 0, 0, W, H);
-  const d = x.getImageData(0, 0, W, H).data;
-  const F = new Uint8Array(W * H);
-  const C: string[] = new Array(W * H);
-  for (let i = 0; i < W * H; i++) {
-    const a = d[i * 4 + 3] / 255;
-    const l = (0.3 * d[i * 4] + 0.59 * d[i * 4 + 1] + 0.11 * d[i * 4 + 2]) / 255;
-    const v = S.imgUse === 'alpha' ? a : S.imgUse === 'dark' ? a * (1 - l) : a * l;
-    F[i] = v * 100 >= S.thresh ? 1 : 0;
-    C[i] = rgb2hex(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]);
-  }
-  return { W, H, F, C };
 }

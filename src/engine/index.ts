@@ -11,3 +11,6 @@ export * from './raster';
 export * from './png';
 export * from './graphics';
 export * from './project';
+export * from './settings-schema';
+export * from './image';
+export * from './fit';
