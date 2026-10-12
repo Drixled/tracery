@@ -77,3 +77,11 @@ test('ASCII art starts as blocks and prints as typed in Characters mode', () => 
   assert.ok(!plain(run(file('ascii.json', JSON.stringify({ src: 'ascii', ascii: art })))).includes('o.o'), 'blocks by default');
   assert.equal(plain(run(file('ascii-chars.json', JSON.stringify({ src: 'ascii', ascii: art, draw: 'chars' })))).replace(/\s+$/gm, '').trim(), art.trim());
 });
+
+test('long shaded TheDraw banners render, and --width refuses Characters mode', () => {
+  const words = Array.from({ length: 16 }, () => 'WIDE'.repeat(31)).join('\n');
+  const long = file('tdf-long.json', JSON.stringify({ src: 'font', face: 'tdf:Cyberrr Cyan', words, tint: 'shade' }));
+  assert.equal(spawnSync('node', [CLI, long], { maxBuffer: 64 << 20 }).status, 0);
+  const width = spawnSync('node', [CLI, file('width.json', JSON.stringify({ src: 'font', words: 'hi' })), '--width', '80'], { encoding: 'utf8' });
+  assert.match(width.stderr, /--width only applies in Blocks mode/);
+});

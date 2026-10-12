@@ -1,4 +1,4 @@
-import { hex2rgb, rgb2hex } from './color';
+import { mix, rgb2hex } from './color';
 import type { Dither, Palette } from './types';
 
 export const PALETTE_CATEGORIES = [
@@ -19,14 +19,6 @@ export interface CatalogPalette extends Palette {
   category: PaletteCategory;
 }
 
-/** Mix a color toward black (amt < 0) or white (amt > 0). */
-export function shade(h: string, amt: number): string {
-  const [r, g, b] = hex2rgb(h);
-  const t = amt < 0 ? 0 : 255;
-  const k = Math.abs(amt);
-  return rgb2hex(r + (t - r) * k, g + (t - g) * k, b + (t - b) * k);
-}
-
 type Row = [name: string, stops: string[], outline: string, lip: string, opts?: { shine?: string; dither?: Dither; shadow?: string }];
 
 function group(category: PaletteCategory, rows: Row[]): CatalogPalette[] {
@@ -37,7 +29,7 @@ function group(category: PaletteCategory, rows: Row[]): CatalogPalette[] {
     outlineColor,
     lipColor,
     shineColor: o.shine ?? '#ffffff',
-    shadowColor: o.shadow ?? shade(lipColor, -0.55),
+    shadowColor: o.shadow ?? mix(lipColor, '#000000', 0.55),
     ...(o.dither ? { dither: o.dither } : {}),
   }));
 }
@@ -225,8 +217,8 @@ export function generatePalette(seed = Math.random()): Palette {
     name: `Generated · ${sc.name} ${Math.round(base)}°`,
     stops,
     outlineColor,
-    lipColor: shade(outlineColor, -0.5),
+    lipColor: mix(outlineColor, '#000000', 0.5),
     shineColor: '#ffffff',
-    shadowColor: shade(outlineColor, -0.75),
+    shadowColor: mix(outlineColor, '#000000', 0.75),
   };
 }

@@ -29,6 +29,26 @@ export function threshold(d: Dither, x: number, y: number): number {
   }
 }
 
+/** Gradient position in [0, 1] of (x, y) inside the box l..r, top..bot. Rows count double for radial, since cells and pixels are about twice as tall as wide. */
+export function ramp(S: Settings, l: number, top: number, r: number, bot: number): (x: number, y: number) => number {
+  const cx = (l + r) / 2, cy = (top + bot) / 2;
+  // Center-to-corner distance, so radial t reaches 1 at the corners.
+  const rmax = Math.hypot(Math.max(1, r - l) / 2, Math.max(1, bot - top)) || 1;
+  return (x, y) => {
+    const ty = (y - top) / Math.max(1, bot - top), tx = (x - l) / Math.max(1, r - l);
+    const t = S.dir === 'h' ? tx : S.dir === 'd' ? (tx + ty) / 2 : S.dir === 'r' ? Math.hypot(x - cx, (y - cy) * 2) / rmax : ty;
+    return Math.max(0, Math.min(1, 0.5 + (t - 0.5) / (S.spread / 100)));
+  };
+}
+
+/** The palette stop at t in [0, 1], dithered between neighbors at (x, y). */
+export function pickStop(S: Settings, t: number, x: number, y: number, stops = S.stops): string {
+  const n = stops.length;
+  if (n < 2) return stops[0] ?? '#ffffff';
+  const pos = Math.max(0, Math.min(1, S.reverse ? 1 - t : t)) * (n - 1), k = Math.min(n - 2, Math.floor(pos));
+  return pos - k > threshold(S.dither, x, y) ? stops[k + 1] : stops[k];
+}
+
 /** Square dilation by radius r (separable: horizontal then vertical). */
 export function dilate(M: Uint8Array, W: number, H: number, r: number): Uint8Array {
   if (!r) return M.slice();
@@ -84,13 +104,7 @@ export function stylize(m: Mask, S: Settings, q: Quantizer): Pixels | null {
   const G = dilate(F, W, H, g); // body + gap
   const D = dilate(G, W, H, o); // body + gap + outline
   const at = (M: Uint8Array, x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && M[y * W + x] === 1;
-  const stops = S.stops.length ? S.stops : ['#ffffff'];
-  const n = stops.length;
-  const spread = S.spread / 100;
-  const cx = (l + r) / 2;
-  const cy = (top + bot) / 2;
-  // Center-to-corner distance in the same units as t below, so radial t reaches 1 at the corners.
-  const rmax = Math.hypot(Math.max(1, r - l) / 4, Math.max(1, bot - top) / 2) || 1;
+  const tAt = ramp(S, l, top, r, bot);
   const useImageColors = !!C && (S.src === 'font' ? S.tint !== 'ramp' : S.imgColors && S.src === 'image');
 
   const px: (string | null)[] = new Array(W * H).fill(null);
@@ -100,23 +114,7 @@ export function stylize(m: Mask, S: Settings, q: Quantizer): Pixels | null {
       if (F[i]) {
         let col: string;
         if (useImageColors && C) col = C[i];
-        else {
-          const ty = (y - top) / Math.max(1, bot - top);
-          const tx = (x - l) / Math.max(1, r - l);
-          let t =
-            S.dir === 'h' ? tx
-            : S.dir === 'd' ? (tx + ty) / 2
-            : S.dir === 'r' ? Math.hypot((x - cx) / 2, y - cy) / rmax
-            : ty;
-          t = Math.max(0, Math.min(1, 0.5 + (t - 0.5) / spread));
-          if (S.reverse) t = 1 - t;
-          if (n === 1) col = stops[0];
-          else {
-            const pos = t * (n - 1);
-            const k = Math.min(n - 2, Math.floor(pos));
-            col = pos - k > threshold(S.dither, x, y) ? stops[k + 1] : stops[k];
-          }
-        }
+        else col = pickStop(S, tAt(x, y), x, y);
         if (S.bevel) {
           if (!at(F, x, y - 1)) col = S.shineColor;
           else if (!at(F, x, y + 1)) col = S.lipColor;

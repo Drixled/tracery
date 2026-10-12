@@ -1,11 +1,10 @@
-import { createQuantizer, hex2rgb, rgb2hex } from './color';
+import { createQuantizer, hex2rgb, mix } from './color';
 import { QUAD } from './encode';
 import { checkMaskSize, maskFromAscii } from './mask';
 import { finish, render, type RenderResult } from './render';
-import { threshold } from './stylize';
+import { pickStop, ramp } from './stylize';
 import type { Art, ArtCell, Cell, Mask, Settings } from './types';
 
-const mix = (a: string, b: string, k: number) => { const x = hex2rgb(a), y = hex2rgb(b); return rgb2hex(x[0] + (y[0] - x[0]) * k, x[1] + (y[1] - x[1]) * k, x[2] + (y[2] - x[2]) * k); };
 const luma = (h: string) => { const [r, g, b] = hex2rgb(h); return (r * 0.3 + g * 0.59 + b * 0.11) / 255; };
 const SHADES: Record<string, number> = { '░': 0.25, '▒': 0.5, '▓': 0.75 };
 
@@ -18,32 +17,20 @@ export function colorArt(art: Art, S: Settings): (ArtCell | null)[] {
     const x = i % W, y = (i - x) / W;
     top = Math.min(top, y); bot = Math.max(bot, y); l = Math.min(l, x); r = Math.max(r, x);
   });
-  const n = S.stops.length;
   // The shade map runs from the palette's darkest color to its lightest, whatever order the ramp is in.
   const byLight = S.stops.slice().sort((a, b) => luma(a) - luma(b));
-  const pick = (t: number, x: number, y: number, stops = S.stops) => {
-    t = S.reverse ? 1 - t : t;
-    if (n === 1) return stops[0];
-    const pos = Math.max(0, Math.min(1, t)) * (n - 1), k = Math.min(n - 2, Math.floor(pos));
-    return pos - k > threshold(S.dither, x, y) ? stops[k + 1] : stops[k];
-  };
-  // Cells are about twice as tall as wide, so a row counts double for the radial ramp.
-  const cx = (l + r) / 2, cy = (top + bot) / 2, rmax = Math.hypot(Math.max(1, r - l) / 2, Math.max(1, bot - top)) || 1;
-  const ramp = (x: number, y: number) => {
-    const ty = (y - top) / Math.max(1, bot - top), tx = (x - l) / Math.max(1, r - l);
-    const t = S.dir === 'h' ? tx : S.dir === 'd' ? (tx + ty) / 2 : S.dir === 'r' ? Math.hypot(x - cx, (y - cy) * 2) / rmax : ty;
-    return Math.max(0, Math.min(1, 0.5 + (t - 0.5) / (S.spread / 100)));
-  };
-  // Stretch the font's own brightness range over the whole palette.
-  const lumas = cells.flatMap(c => (c ? [c.fg, c.bg] : [])).filter((h): h is string => !!h).map(luma);
-  const lo = Math.min(...lumas), span = Math.max(...lumas) - lo || 1;
-  const shade = (h: string, x: number, y: number) => pick((luma(h) - lo) / span, x, y, byLight);
+  const tAt = ramp(S, l, top, r, bot);
+  // Stretch the font's own brightness range over the whole palette. A loop, since spreading every cell into Math.min overflows the stack on long banners.
+  let lo = 1, hi = 0;
+  for (const c of cells) for (const h of c ? [c.fg, c.bg] : []) if (h) { const v = luma(h); lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  const span = hi - lo || 1;
+  const shade = (h: string, x: number, y: number) => pickStop(S, (luma(h) - lo) / span, x, y, byLight);
   return cells.map((c, i) => {
     if (!c) return null;
     const x = i % W, y = (i - x) / W;
     if (S.tint === 'font' && c.fg) return c;
     if (S.tint === 'shade' && c.fg) return { ch: c.ch, fg: shade(c.fg, x, y), bg: c.bg && shade(c.bg, x, y) };
-    const fg = pick(ramp(x, y), x, y);
+    const fg = pickStop(S, tAt(x, y), x, y);
     return { ch: c.ch, fg, bg: c.bg && mix(fg, '#000000', 0.5) };
   });
 }

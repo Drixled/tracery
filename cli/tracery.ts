@@ -87,6 +87,7 @@ async function main() {
   if (values.kitty) overrides.gfxProto = 'kitty';
   if (values['image-colors']) overrides.imgColors = true;
   S = validateSettings({ ...S, ...overrides });
+  if (values.width !== undefined && drawsChars(S)) throw new Error('--width only applies in Blocks mode. Characters mode prints the font at its own size.');
   let mask: Mask | null = null;
   let fontResult: RenderResult | null = null;
   if (S.src === 'font') fontResult = renderArt(setText(await loadFace(S.face, FONTS), S), S);

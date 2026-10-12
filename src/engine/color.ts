@@ -9,6 +9,12 @@ export const hex2rgb = (h: string): [number, number, number] => [
 export const rgb2hex = (r: number, g: number, b: number): string =>
   '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, v | 0)).toString(16).padStart(2, '0')).join('');
 
+/** Blend a toward b by k in [0, 1]. */
+export const mix = (a: string, b: string, k: number): string => {
+  const x = hex2rgb(a), y = hex2rgb(b);
+  return rgb2hex(x[0] + (y[0] - x[0]) * k, x[1] + (y[1] - x[1]) * k, x[2] + (y[2] - x[2]) * k);
+};
+
 /** Perceptually weighted squared distance. Good enough for palette snapping. */
 export function dist(a: string, b: string): number {
   const x = hex2rgb(a);

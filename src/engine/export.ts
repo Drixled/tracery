@@ -23,17 +23,8 @@ export const toBase64 = (s: string) => bytesToBase64(new TextEncoder().encode(s)
 
 export const slug = (name: string) => (name || 'banner').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'banner';
 
-/** Settings worth saving: drops preview-only fields and source text that isn't in use. */
-export function exportableSettings(S: Settings): Partial<Settings> {
-  const s: Partial<Settings> = { ...S };
-  if (S.src !== 'ascii') delete s.ascii;
-  if (S.src !== 'text') delete s.text;
-  if (S.src !== 'font') delete s.words;
-  return s;
-}
-
 export function buildExport(kind: ExportKind, S: Settings, r: RenderResult, extras: ExportExtras = {}): ExportText {
-  if (kind === 'json') return { note: 'Your complete project, including the source image. Import it here to continue. ASCII and image projects also work with the CLI.', text: JSON.stringify(extras.project ?? exportableSettings(S), null, 2) };
+  if (kind === 'json') return { note: 'Your complete project, including the source image. Import it here to continue. ASCII and image projects also work with the CLI.', text: JSON.stringify(extras.project, null, 2) };
   const n = slug(S.name);
   // Files live in a folder Tracery owns, so the undo line never removes a system folder such as /etc/ssh.
   const dir = '/etc/tracery';

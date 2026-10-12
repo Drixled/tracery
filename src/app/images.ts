@@ -21,7 +21,8 @@ export async function importImage(file: File): Promise<{ source: SourceImage; de
   const url = URL.createObjectURL(file);
   try {
     const image = await load(url);
-    const scale = Math.min(1, 2048 / Math.max(image.naturalWidth, image.naturalHeight));
+    // Rendering samples at most 240 px wide (imgW), so 512 keeps all the detail and keeps photos under MAX_IMAGE_DATA.
+    const scale = Math.min(1, 512 / Math.max(image.naturalWidth, image.naturalHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
     canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height);
