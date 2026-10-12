@@ -10,7 +10,7 @@
 
   let { banner }: { banner: SavedProject } = $props();
   const app = useTracery();
-  const href = $derived(routePath({ view: 'banner', id: banner.id }));
+  const href = $derived(routePath({ view: 'banner', id: banner.id, step: 'style' }));
   let renaming = $state(false);
   let confirming = $state(false);
 

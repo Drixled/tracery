@@ -1,7 +1,10 @@
-/** Two kinds of page: home at /, and one banner at /b/<id>. Anything else goes home. */
-export type Route = { view: 'home' } | { view: 'banner'; id: string };
+/** A banner shows the editor, or the font picker over it. */
+export type Step = 'font' | 'style';
+/** Home at /, and one banner at /b/<id>, with its font picker at /b/<id>/font. Anything else goes home. */
+export type Route = { view: 'home' } | { view: 'banner'; id: string; step: Step };
 
-export const routePath = (route: Route) => (route.view === 'home' ? '/' : `/b/${encodeURIComponent(route.id)}`);
+export const routePath = (route: Route) =>
+  route.view === 'home' ? '/' : `/b/${encodeURIComponent(route.id)}${route.step === 'style' ? '' : `/${route.step}`}`;
 
 /** The host must serve index.html for these paths (Vite's dev and preview servers already do). */
 export class Router {
@@ -25,10 +28,10 @@ export class Router {
     this.read();
   }
   private read() {
-    const [view, id] = location.pathname.split('/').filter(Boolean);
+    const [view, id, step] = location.pathname.split('/').filter(Boolean);
     let decoded = '';
     try { decoded = view === 'b' && id ? decodeURIComponent(id) : ''; } catch { /* A malformed address goes home. */ }
-    this.route = decoded ? { view: 'banner', id: decoded } : { view: 'home' };
+    this.route = decoded ? { view: 'banner', id: decoded, step: step === 'font' ? 'font' : 'style' } : { view: 'home' };
     const canonical = routePath(this.route);
     if (location.pathname !== canonical) history.replaceState(null, '', canonical);
     this.listeners.forEach(listener => listener(this.route));

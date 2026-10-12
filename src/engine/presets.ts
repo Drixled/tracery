@@ -31,6 +31,7 @@ const K = PALETTES[0];
 export const DEFAULTS: Settings = {
   src: 'ascii', ascii: ONEIR_ART, cw: 3, ch: 4, glyph: true,
   text: 'Oneir', font: 'Shrikhand', size: 22, tracking: 1, leading: 2,
+  words: 'Tracery', face: 'figlet:ANSI Shadow', fLayout: 'default', fAlign: 'left', fWrap: 0, draw: 'blocks', tint: 'font',
   imgW: 96, thresh: 50, imgUse: 'alpha', imgColors: false,
   palette: K.name, stops: K.stops.slice(), dither: 'bayer4', dir: 'v', reverse: false, spread: 100,
   gap: 1, gapFillOn: false, gapFill: '#000000', outline: 1, outlineColor: K.outlineColor,
@@ -38,7 +39,7 @@ export const DEFAULTS: Settings = {
   shadowOn: false, shadowColor: K.shadowColor, sdx: 2, sdy: 1,
   mode: 'quad', color: 'true', name: 'oneir', targetCols: 0,
   pngCell: 8, pngTransparent: true, gfxProto: 'kitty', gfxCols: 0,
-  fit: true, zoom: 6, ratio: 2, termBg: '#0c0c0c',
+  ratio: 2, termBg: '#0c0c0c',
 };
 
 /** Normalize stored settings. Invalid values use defaults; unknown keys are ignored. */
@@ -52,6 +53,8 @@ export function normalizeSettings(input: unknown): Settings {
       (out as unknown as Record<string, unknown>)[key] = Array.isArray(value) ? value.slice() : value;
     }
   }
+  // Font banners start as their own characters; ASCII art, text and images start as blocks.
+  if (src.draw === undefined && out.src === 'font') out.draw = 'chars';
   return out;
 }
 

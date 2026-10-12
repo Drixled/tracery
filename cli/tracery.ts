@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { PNG } from 'pngjs';
-import { PALETTES, buildExport, graphicsSequence, gfxColumns, rasterizeCells, maskFromAscii, maskFromRgba, render, parseProject, validateSettings, type Settings, type Mask } from '../src/engine';
+import { PALETTES, buildExport, graphicsSequence, gfxColumns, rasterizeCells, maskFromAscii, maskFromRgba, render, renderArt, artFromAscii, drawsChars, loadFace, setText, parseProject, validateSettings, type Settings, type Mask, type FontReader, type RenderResult } from '../src/engine';
 import { parseCli, numericOption } from './args';
 import { decodePng } from './image';
 
@@ -32,8 +35,8 @@ Options
       --list-palettes     List palette names
   -h, --help              Show help
 
-Project files come from the browser app. ASCII and saved image projects work
-with this CLI. Text sources need the browser's font renderer.
+Project files come from the browser app. ASCII, image and FIGlet/TheDraw font
+projects work with this CLI. Text sources need the browser's font renderer.
 Choose one output mode; --png can add an image to any mode.
 
 Examples
@@ -42,6 +45,12 @@ Examples
   tracery --art logo.txt --palette "Hot Magenta" --png logo.png
   figlet -f slant hello | tracery --art - --color 256
 `;
+// Font projects read FIGlet fonts from the figlet package and TheDraw fonts from this repository's public/fonts/tdf.
+const require = createRequire(import.meta.url);
+const FONTS: FontReader = {
+  flf: name => readFile(new URL(`../fonts/${name}.flf`, pathToFileURL(require.resolve('figlet'))), 'utf8'),
+  tdf: async file => new Uint8Array(await readFile(new URL(`../../public/fonts/tdf/${file}.tdf`, import.meta.url))),
+};
 function read(path: string): Buffer {
   try { return readFileSync(path === '-' ? 0 : path); }
   catch (e) { throw new Error(`Could not read ${path}: ${(e as Error).message}`); }
@@ -78,17 +87,20 @@ async function main() {
   if (values.kitty) overrides.gfxProto = 'kitty';
   if (values['image-colors']) overrides.imgColors = true;
   S = validateSettings({ ...S, ...overrides });
-  let mask: Mask | null;
-  if (S.src === 'ascii') mask = maskFromAscii(S.ascii, S);
+  let mask: Mask | null = null;
+  let fontResult: RenderResult | null = null;
+  if (S.src === 'font') fontResult = renderArt(setText(await loadFace(S.face, FONTS), S), S);
+  else if (S.src === 'ascii') { if (drawsChars(S)) fontResult = renderArt(artFromAscii(S.ascii), S); else mask = maskFromAscii(S.ascii, S); }
   else if (S.src === 'image') {
     const bytes = values.image ? read(values.image) : project.image ? Buffer.from(project.image.dataUrl.split(',')[1], 'base64') : null;
     if (!bytes) throw new Error('This image project has no source image. Pass --image logo.png.');
     mask = maskFromRgba(decodePng(bytes), S);
   } else throw new Error('Text projects need the web app. Pass --art or --image to replace the source.');
-  const result = render(mask, S);
+  const result = fontResult ?? render(mask, S);
   if (!result.lines) throw new Error('Nothing to draw. The source is empty.');
   const wantsPng = !!(values.png || values.kitty || values.iterm || values['install-graphics']);
   let png: Uint8Array | undefined;
+  if (wantsPng && drawsChars(S)) throw new Error('PNG and terminal images of Characters mode need the web app, which draws the glyphs. Use Blocks mode here.');
   if (wantsPng) {
     const raster = rasterizeCells(result.rows, result.cols, S.pngCell, S.ratio, S.pngTransparent ? null : S.termBg);
     const image = new PNG({ width: raster.width, height: raster.height });

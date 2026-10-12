@@ -12,9 +12,12 @@
   import SettingSelect from '../controls/SettingSelect.svelte';
   import SettingCheck from '../controls/SettingCheck.svelte';
   import { chip } from '../controls/chip';
+  import Segmented from '../controls/Segmented.svelte';
+  import More from '../controls/More.svelte';
 
   const app = useTracery();
   const S = $derived(app.settings);
+  const fontColored = $derived(!!app.art?.cells.some(c => c?.fg));
   let query = $state('');
   let category = $state('all');
 
@@ -48,6 +51,16 @@
   }
 </script>
 
+{#if S.src === 'font' && S.tint === 'font' && fontColored}
+  <p class="text-muted-foreground m-0 text-[11px]">
+    Showing the font's own colors. Use
+    <button type="button" class="text-primary cursor-pointer underline-offset-4 hover:underline" onclick={() => { if (app.edit({ tint: 'ramp' })) app.endEdit(); }}>Gradient</button>
+    or
+    <button type="button" class="text-primary cursor-pointer underline-offset-4 hover:underline" onclick={() => { if (app.edit({ tint: 'shade' })) app.endEdit(); }}>Shade</button>
+    to recolor it with a palette.
+  </p>
+{/if}
+
 <Section title="Palette">
   {#snippet tools()}
     <Button variant="outline" size="xs" title="Make a new palette from a random color harmony" onclick={() => apply(generatePalette())}>Generate</Button>
@@ -63,7 +76,7 @@
       </Select.Content>
     </Select.Root>
   </div>
-  <div class="flex max-h-[300px] flex-wrap content-start gap-1.5 overflow-auto p-0.5">
+  <div class="flex max-h-[180px] flex-wrap content-start gap-1.5 overflow-auto p-0.5">
     {#each groups as group, i (group.name)}
       <div class={cn('text-faint basis-full text-[10px] tracking-[0.12em] uppercase', i > 0 && 'pt-2')}>{group.name} · {group.items.length}</div>
       {#each group.items as p (p.name)}
@@ -74,10 +87,7 @@
       {/each}
     {/each}
   </div>
-  <p class="text-muted-foreground m-0 text-[11px]">{count ? `${count} of ${PALETTES.length} palettes` : 'No palettes match. Try another word, or Generate one.'}</p>
-</Section>
-
-<Section title="Ramp">
+  {#if !count}<p class="text-muted-foreground m-0 text-[11px]">No palettes match. Try another word, or Generate one.</p>{/if}
   <div class="flex flex-wrap items-center gap-1.5">
     {#each S.stops as stop, i (i)}
       <input type="color" class="swatch h-7 w-[34px]" aria-label={`Ramp color ${i + 1}`} value={stop} oninput={event => setStop(i, event.currentTarget.value)} onchange={() => app.endEdit()} />
@@ -85,8 +95,10 @@
     <Button variant="outline" size="icon-sm" class="h-7 w-[26px]" title="Add a color" aria-label="Add a color" disabled={S.stops.length >= 6} onclick={() => resize(1)}><PlusIcon /></Button>
     <Button variant="outline" size="icon-sm" class="h-7 w-[26px]" title="Remove the last color" aria-label="Remove the last color" disabled={S.stops.length <= 1} onclick={() => resize(-1)}><MinusIcon /></Button>
   </div>
-  <SettingSelect key="dither" label="Dither" />
-  <SettingSelect key="dir" label="Direction" />
-  <SettingSlider key="spread" label="Spread" />
-  <SettingCheck key="reverse" label="Reverse ramp" />
+  <Segmented key="dir" label="Direction" />
+  <More>
+    <SettingSelect key="dither" label="Dither" />
+    <SettingSlider key="spread" label="Spread" />
+    <SettingCheck key="reverse" label="Reverse ramp" />
+  </More>
 </Section>

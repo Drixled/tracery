@@ -1,4 +1,4 @@
-import { createQuantizer } from './color';
+import { createQuantizer, type Quantizer } from './color';
 import { encode, toAnsi } from './encode';
 import { fitPixels } from './fit';
 import { stylize } from './stylize';
@@ -20,7 +20,11 @@ export function render(mask: Mask | null, settings: Settings): RenderResult {
   const q = createQuantizer(settings.color);
   const img = stylize(mask, settings, q);
   if (!img) return EMPTY;
-  const rows = encode(fitPixels(img, settings.mode, settings.targetCols), settings.mode);
+  return finish(encode(fitPixels(img, settings.mode, settings.targetCols), settings.mode), q);
+}
+
+/** Serialize finished cells and measure them. */
+export function finish(rows: Cell[][], q: Quantizer): RenderResult {
   if (!rows.length) return EMPTY;
   const ansi = toAnsi(rows, q);
   return {

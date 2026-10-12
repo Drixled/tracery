@@ -15,7 +15,8 @@
     "preview": "vite preview",
     "typecheck": "svelte-check",
     "test": "vite build --config vite.cli.config.ts && node --test test/*.test.mjs",
-    "tracery": "node dist/cli/tracery.js"
+    "tracery": "node dist/cli/tracery.js",
+    "font-meta": "node scripts/font-meta.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -43,6 +44,7 @@
     "vite": "^8.3.4"
   },
   "dependencies": {
+    "figlet": "^1.12.0",
     "pngjs": "^7.0.0"
   }
 }

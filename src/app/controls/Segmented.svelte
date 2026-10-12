@@ -6,7 +6,7 @@
   import type { ChoiceKey } from './keys';
 
   /** One-of-many buttons for a schema choice. Unlike a toggle group, the current choice cannot be switched off. */
-  let { key, label }: { key: Exclude<ChoiceKey, 'targetCols'>; label: string } = $props();
+  let { key, label }: { key: Exclude<ChoiceKey, 'targetCols' | 'fWrap'>; label: string } = $props();
   const app = useTracery();
   const options = $derived.by(() => {
     const rule = SETTINGS_SCHEMA[key];

@@ -5,4 +5,4 @@ export type NumberKey = KeysOf<number>;
 export type BooleanKey = KeysOf<boolean>;
 export type StringKey = KeysOf<string>;
 /** Settings whose values come from a fixed list in the engine schema. */
-export type ChoiceKey = 'src' | 'font' | 'imgUse' | 'dither' | 'dir' | 'mode' | 'color' | 'targetCols' | 'gfxProto';
+export type ChoiceKey = 'src' | 'font' | 'imgUse' | 'dither' | 'dir' | 'mode' | 'color' | 'targetCols' | 'gfxProto' | 'fLayout' | 'fAlign' | 'fWrap' | 'draw' | 'tint';

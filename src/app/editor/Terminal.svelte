@@ -8,22 +8,21 @@
     background: string;
     result: RenderResult;
     ratio: number;
-    /** Cell width in CSS px, or `null` to fit the window. */
-    zoom?: number | null;
     /** Mark the 80, 103 and 120 column widths above the screen. */
     rulers?: boolean;
     empty?: string;
     footer?: Snippet;
   }
-  let { title, background, result, ratio, zoom = null, rulers = false, empty = '', footer }: Props = $props();
+  // Always drawn at a terminal's real scale: a 13 px monospace font makes columns about 8 px wide.
+  const CELL = 8;
+  let { title, background, result, ratio, rulers = false, empty = '', footer }: Props = $props();
   let canvas = $state<HTMLCanvasElement | null>(null);
   let width = $state(0);
   let cell = $state(0);
 
   $effect(() => {
     if (!canvas || !result.lines || !width) return;
-    const size = zoom ?? Math.max(1, Math.min(16, Math.floor((width - 36) / Math.max(1, result.cols))));
-    cell = drawCells(canvas, result.rows, result.cols, { cell: size, ratio });
+    cell = drawCells(canvas, result.rows, result.cols, { cell: CELL, ratio });
   });
   const marks = $derived(rulers && result.lines ? [80, 103, 120].filter(columns => columns * cell < width + 400) : []);
 </script>
@@ -41,7 +40,7 @@
     </div>
   {/if}
   <div class="relative min-h-[180px] overflow-auto p-[22px]" bind:clientWidth={width}>
-    <canvas bind:this={canvas} hidden={!result.lines} class="mx-auto block [image-rendering:pixelated]"></canvas>
+    <canvas bind:this={canvas} hidden={!result.lines} class="block [image-rendering:pixelated]"></canvas>
     {#if !result.lines && empty}<p class="my-14 text-center text-xs text-[#8f8780]">{empty}</p>{/if}
   </div>
   {@render footer?.()}

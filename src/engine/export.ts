@@ -1,9 +1,10 @@
 import { bytesToBase64, graphicsSequence, graphicsTermTest } from './graphics';
 import type { RenderResult } from './render';
+import { QUAD } from './encode';
 import type { Settings } from './types';
 import type { Project } from './project';
 
-export type ExportKind = 'install' | 'agent' | 'printf' | 'raw' | 'png' | 'graphics' | 'json';
+export type ExportKind = 'install' | 'agent' | 'printf' | 'raw' | 'text' | 'png' | 'graphics' | 'json';
 
 export interface ExportExtras {
   /** Encoded PNG of the banner, needed for the png and graphics exports. */
@@ -27,6 +28,7 @@ export function exportableSettings(S: Settings): Partial<Settings> {
   const s: Partial<Settings> = { ...S };
   if (S.src !== 'ascii') delete s.ascii;
   if (S.src !== 'text') delete s.text;
+  if (S.src !== 'font') delete s.words;
   return s;
 }
 
@@ -74,6 +76,11 @@ ${data}
       return {
         note: 'Escaped for printf. Handy for a shell profile or a quick test in any terminal.',
         text: "printf '" + r.ansi.replace(/\\/g, '\\\\').replace(/%/g, '%%').replace(/'/g, "'\\''").replace(/\x1b/g, '\\033').replace(/\n/g, '\\n') + "'",
+      };
+    case 'text':
+      return {
+        note: 'Just the characters, no color codes. Paste it into a README, a code comment or a chat.',
+        text: r.rows.map(row => row.map(c => c.ch ?? QUAD[c.m]).join('').trimEnd()).join('\n'),
       };
     case 'raw':
       return {
@@ -127,6 +134,6 @@ export function buildDownload(kind: ExportKind, S: Settings, r: RenderResult, ex
     return { filename: `${n}.png`, data: extras.png, mime: 'image/png' };
   }
   if (kind === 'graphics' && !extras.png) throw new Error('The terminal image is not ready.');
-  const suffix = kind === 'json' ? 'tracery.json' : kind === 'raw' ? 'ansi' : kind === 'agent' ? 'agent.txt' : kind === 'graphics' ? 'graphics.sh' : kind === 'printf' ? 'printf.sh' : 'install.sh';
+  const suffix = kind === 'json' ? 'tracery.json' : kind === 'raw' ? 'ansi' : kind === 'text' ? 'txt' : kind === 'agent' ? 'agent.txt' : kind === 'graphics' ? 'graphics.sh' : kind === 'printf' ? 'printf.sh' : 'install.sh';
   return { filename: `${n}.${suffix}`, data: buildExport(kind, S, r, extras).text + (kind === 'raw' ? '' : '\n'), mime: kind === 'json' ? 'application/json' : 'text/plain;charset=utf-8' };
 }

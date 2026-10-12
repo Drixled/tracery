@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ArrowLeftIcon from '~icons/heroicons/arrow-left-16-solid';
   import ChevronDownIcon from '~icons/heroicons/chevron-down-16-solid';
   import UndoIcon from '~icons/heroicons/arrow-uturn-left-16-solid';
   import RedoIcon from '~icons/heroicons/arrow-uturn-right-16-solid';
@@ -18,13 +17,10 @@
   let confirming = $state(false);
 </script>
 
-<header class="bg-background flex h-14 flex-none items-center justify-between gap-4 border-b border-line-soft px-3.5 pt-[env(safe-area-inset-top,0px)] studio:pl-5">
+<header class="bg-background flex h-14 flex-none items-center justify-between gap-x-4 border-b border-line-soft px-3.5 pt-[env(safe-area-inset-top,0px)] studio:pl-5">
   <nav aria-label="Breadcrumb" class="flex min-w-0 items-center gap-2.5">
-    <a href="/" title="All banners" class="group flex items-center gap-2">
-      <ArrowLeftIcon class="text-muted-foreground group-hover:text-foreground size-4" />
-      <span class="wordmark hidden text-[15px] studio:inline">Tracery</span>
-    </a>
-    <span class="text-faint hidden studio:inline" aria-hidden="true">/</span>
+    <a href="/" title="All banners" class="wordmark shrink-0 text-[15px]">Tracery</a>
+    <span class="text-faint" aria-hidden="true">/</span>
     {#if renaming}
       <InlineRename value={name} class="w-[260px]" onDone={next => { renaming = false; if (next) app.rename(next); }} />
     {:else}
@@ -43,6 +39,7 @@
       </DropdownMenu.Root>
     {/if}
   </nav>
+
 
   <div class="flex items-center gap-2">
     <span role="status" class="text-muted-foreground mr-1.5 hidden text-[11px] whitespace-nowrap studio:inline">{app.saveStatus}</span>

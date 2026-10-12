@@ -13,3 +13,6 @@ export * from './project';
 export * from './settings-schema';
 export * from './image';
 export * from './fit';
+export * from './tdf';
+export * from './fonts';
+export * from './art';

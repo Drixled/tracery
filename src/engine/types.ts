@@ -1,4 +1,10 @@
-export type Source = 'ascii' | 'text' | 'image';
+export type Source = 'ascii' | 'text' | 'image' | 'font';
+export type FontLayout = 'default' | 'full' | 'fitted' | 'smush';
+export type Align = 'left' | 'center' | 'right';
+/** Characters keeps the font's glyphs; Blocks fills its shape with block pixels. */
+export type Draw = 'chars' | 'blocks';
+/** How font art is colored: its own colors, the palette ramp, or the palette mapped by the font's brightness. */
+export type Tint = 'font' | 'ramp' | 'shade';
 export type Dither = 'bayer4' | 'bayer2' | 'bayer8' | 'checker' | 'lines' | 'noise' | 'none';
 export type Direction = 'v' | 'h' | 'd' | 'r';
 export type BlockMode = 'half' | 'quad' | 'full';
@@ -20,6 +26,16 @@ export interface Settings {
   size: number;
   tracking: number;
   leading: number;
+  // Font source: FIGlet and TheDraw fonts
+  words: string;
+  /** `figlet:<name>` or `tdf:<name>`. */
+  face: string;
+  fLayout: FontLayout;
+  fAlign: Align;
+  /** Wrap words at this many columns; 0 never wraps. */
+  fWrap: number;
+  draw: Draw;
+  tint: Tint;
   // Image source (browser only)
   imgW: number;
   thresh: number;
@@ -61,10 +77,24 @@ export interface Settings {
   /** Display width in terminal columns; 0 means match the block banner. */
   gfxCols: number;
   // Preview only
-  fit: boolean;
-  zoom: number;
   ratio: number;
   termBg: string;
+}
+
+/** One character of font art. `fg` and `bg` are the font's own colors; `null` means none. */
+export interface ArtCell {
+  ch: string;
+  fg: string | null;
+  bg: string | null;
+}
+
+/** Text set in a font: a grid of characters, `null` where nothing is drawn. */
+export interface Art {
+  W: number;
+  H: number;
+  cells: (ArtCell | null)[];
+  /** Characters of the text the font has no glyph for. */
+  missing: string[];
 }
 
 /** A boolean silhouette, optionally with per-pixel source colors (image source). */
@@ -88,6 +118,8 @@ export interface Pixels {
  */
 export interface Cell {
   m: number;
+  /** A character drawn in `fg` instead of the quadrant blocks (Characters mode). */
+  ch?: string;
   fg?: string;
   bg?: string | null;
 }

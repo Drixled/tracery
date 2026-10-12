@@ -13,20 +13,25 @@ const text = (maxLength = 128, maxLines?: number, maxColumns?: number): SettingR
 
 /** Validation and browser controls use these same limits, options, and steps. */
 export const SETTINGS_SCHEMA: Record<keyof Settings, SettingRule> = {
-  src: choice(['ascii', 'text', 'image'], ['ASCII art', 'Text', 'Image']),
+  src: choice(['ascii', 'text', 'image', 'font'], ['ASCII art', 'Text', 'Image', 'Font']),
   ascii: text(32768, 256, 512), cw: number(1, 6), ch: number(1, 8), glyph: bool,
   text: text(2048, 32, 128), font: choice(['Shrikhand', 'Bowlby One SC', 'Bungee', 'Rubik Mono One', 'Righteous', 'Silkscreen', 'Press Start 2P', 'Pixelify Sans', 'VT323']),
+  words: text(2048, 32, 128), face: text(64),
+  fLayout: choice(['default', 'full', 'fitted', 'smush'], ['Font default', 'Full', 'Fitted', 'Smush']),
+  fAlign: choice(['left', 'center', 'right'], ['Left', 'Center', 'Right']),
+  fWrap: choice([0, 40, 60, 80, 103, 120], ['Never', '40 columns', '60 columns', '80 columns', '103 columns', '120 columns']),
+  draw: choice(['chars', 'blocks'], ['Characters', 'Blocks']), tint: choice(['font', 'ramp', 'shade'], ['Font', 'Gradient', 'Shade']),
   size: number(6, 64), tracking: number(-3, 8), leading: number(0, 16), imgW: number(16, 240), thresh: number(1, 99),
   imgUse: choice(['alpha', 'dark', 'light'], ['Opaque', 'Dark', 'Light']), imgColors: bool,
   palette: text(), stops: { kind: 'stops' },
   dither: choice(['bayer4', 'bayer2', 'bayer8', 'checker', 'lines', 'noise', 'none'], ['Bayer 4×4', 'Bayer 2×2', 'Bayer 8×8', 'Checker seam', 'Scanlines', 'Noise', 'Hard bands']),
-  dir: choice(['v', 'h', 'd', 'r'], ['Vertical', 'Horizontal', 'Diagonal', 'Radial']), reverse: bool, spread: number(40, 200, 5, false),
+  dir: choice(['v', 'h', 'd', 'r'], ['Down', 'Across', 'Diagonal', 'Radial']), reverse: bool, spread: number(40, 200, 5, false),
   gap: number(0, 3), gapFillOn: bool, gapFill: color, outline: number(0, 3), outlineColor: color,
   lipOn: bool, lipColor: color, shineOn: bool, shineColor: color, bevel: bool, shadowOn: bool, shadowColor: color, sdx: number(-4, 4), sdy: number(-4, 4),
   mode: choice(['half', 'quad', 'full'], ['Half ▀▄', 'Quadrant ▚', 'Full ██']), color: choice(['true', '256', '16'], ['Truecolor', '256', '16 VGA']), name: text(),
   targetCols: choice([0, 80, 103, 120], ['Original width', 'Fit 80 columns', 'Fit 103 columns', 'Fit 120 columns']),
   pngCell: number(1, 32), pngTransparent: bool, gfxProto: choice(['kitty', 'iterm'], ['Kitty / Ghostty', 'iTerm2']), gfxCols: number(0, 200),
-  fit: bool, zoom: number(1, 16), ratio: number(1.6, 2.4, 0.05, false), termBg: color,
+  ratio: number(1.6, 2.4, 0.05, false), termBg: color,
 };
 const HEX = /^#[0-9a-f]{6}$/i;
 export function settingError(key: keyof Settings, value: unknown): string | null {

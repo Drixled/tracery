@@ -91,7 +91,7 @@ export function stylize(m: Mask, S: Settings, q: Quantizer): Pixels | null {
   const cy = (top + bot) / 2;
   // Center-to-corner distance in the same units as t below, so radial t reaches 1 at the corners.
   const rmax = Math.hypot(Math.max(1, r - l) / 4, Math.max(1, bot - top) / 2) || 1;
-  const useImageColors = !!C && S.imgColors && S.src === 'image';
+  const useImageColors = !!C && (S.src === 'font' ? S.tint !== 'ramp' : S.imgColors && S.src === 'image');
 
   const px: (string | null)[] = new Array(W * H).fill(null);
   for (let y = 0; y < H; y++)

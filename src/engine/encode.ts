@@ -78,11 +78,11 @@ export function toAnsi(rows: Cell[][], q: Quantizer): string {
         let last: string | null = null;
         for (const c of row) {
           const parts: string[] = [];
-          if (c.m !== 0 && c.fg) parts.push(q.sgr(c.fg, false));
+          if ((c.m !== 0 || c.ch) && c.fg) parts.push(q.sgr(c.fg, false));
           if (c.bg && c.m !== 15) parts.push(q.sgr(c.bg, true));
           const code = '\x1b[0' + (parts.length ? ';' + parts.join(';') : '') + 'm';
           if (code !== last) { s += code; last = code; }
-          s += QUAD[c.m];
+          s += c.ch ?? QUAD[c.m];
         }
         return s + '\x1b[0m';
       })

@@ -34,7 +34,7 @@
       </div>
     {:else if app.banners}
       <div class="text-muted-foreground flex flex-col items-center gap-5 px-4 py-[18vh] text-center">
-        <p class="max-w-[46ch]">Paste ASCII art, type a word or drop a logo, and turn it into a colored terminal banner.</p>
+        <p class="max-w-[46ch]">Pick from 1,300 FIGlet and TheDraw fonts, type a word, and turn it into a colored terminal banner. ASCII art and logos work too.</p>
         <Button size="lg" class="px-5 font-semibold" onclick={() => app.newBanner()}>Make your first banner</Button>
       </div>
     {/if}

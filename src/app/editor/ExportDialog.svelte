@@ -2,7 +2,8 @@
   import { onDestroy, untrack } from 'svelte';
   import { toast } from 'svelte-sonner';
   import XIcon from '~icons/heroicons/x-mark-16-solid';
-  import { buildDownload, buildExport, rasterizeCells, type ExportKind, type RenderResult } from '../../engine';
+  import { buildDownload, buildExport, type ExportKind, type RenderResult } from '../../engine';
+  import { paint } from '../preview';
   import * as Dialog from '$lib/components/ui/dialog';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -17,11 +18,12 @@
     { kind: 'agent', title: 'Agent prompt', detail: 'Let a coding agent install it' },
     { kind: 'printf', title: 'printf', detail: 'One line, paste anywhere' },
     { kind: 'raw', title: 'Raw ANSI', detail: 'The escape codes, nothing else' },
+    { kind: 'text', title: 'Plain text', detail: 'The characters without color' },
     { kind: 'png', title: 'PNG', detail: 'A picture of the banner' },
     { kind: 'graphics', title: 'Terminal image', detail: 'Kitty, Ghostty or iTerm2 graphics' },
     { kind: 'json', title: 'Project file', detail: 'Settings and source, to edit later' },
   ];
-  const EXTENSIONS: Record<ExportKind, string> = { install: '.sh', agent: '.txt', printf: '.sh', raw: '.ansi', png: '.png', graphics: '.sh', json: '.json' };
+  const EXTENSIONS: Record<ExportKind, string> = { install: '.sh', agent: '.txt', printf: '.sh', raw: '.ansi', text: '.txt', png: '.png', graphics: '.sh', json: '.json' };
 
   const app = useTracery();
   let tab = $state<ExportKind>(saved());
@@ -47,10 +49,8 @@
   const failed = $derived(pngError?.input === pngInput ? pngError.message : '');
 
   async function encode({ result, cell, ratio, background }: { result: RenderResult; cell: number; ratio: number; background: string | null }) {
-    const raster = rasterizeCells(result.rows, result.cols, cell, ratio, background);
     const canvas = document.createElement('canvas');
-    canvas.width = raster.width; canvas.height = raster.height;
-    canvas.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(raster.data), raster.width, raster.height), 0, 0);
+    paint(canvas, result.rows, result.cols, cell, ratio, background);
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('Could not encode the PNG. Reduce Cell px or the source size.');
     return { blob, bytes: new Uint8Array(await blob.arrayBuffer()) };
@@ -134,7 +134,7 @@
       </nav>
 
       <div class="flex min-h-0 min-w-0 flex-col overflow-hidden">
-        {#if !shows('raw', 'json')}
+        {#if !shows('raw', 'text', 'json')}
           <div class="flex max-w-[520px] flex-col gap-2.5 px-5 pt-4.5">
             {#if shows('install', 'agent', 'printf', 'graphics')}
               <div class="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-2.5">
