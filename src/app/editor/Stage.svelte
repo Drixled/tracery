@@ -2,8 +2,6 @@
   import { cn } from '$lib/utils';
   import { drawsChars } from '../../engine';
   import { useTracery } from '../context';
-  import SettingSlider from '../controls/SettingSlider.svelte';
-  import SettingColor from '../controls/SettingColor.svelte';
   import Terminal from './Terminal.svelte';
   import TextDock from '../font/TextDock.svelte';
 
@@ -18,7 +16,7 @@
 </script>
 
 <section class={cn('dot-grid flex min-h-0 min-w-0 flex-1 flex-col gap-3.5 px-3.5 py-4.5 studio:overflow-auto studio:px-8 studio:pt-7 studio:pb-5')} aria-label="Preview">
-  <div class="my-auto grid grid-cols-[minmax(0,1fr)]">
+  <div class="grid grid-cols-[minmax(0,1fr)]">
     <Terminal
       title={`ssh ${S.name || 'banner'}`}
       background={S.termBg}
@@ -45,15 +43,8 @@
   </div>
 
   <p role="status" class="text-destructive m-0 text-center text-xs empty:hidden">{app.problem}</p>
-
-  <div class="flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5">
-    <div class="text-muted-foreground flex flex-wrap items-center gap-x-4.5 gap-y-2 text-[11px]">
-      <SettingSlider key="ratio" label="Cell ratio" layout="inline" title="Terminal cell height divided by width. Ghostty and most fonts sit near 2.0" />
-      <span class="flex items-center gap-1.5">Background <SettingColor key="termBg" label="Terminal background" /></span>
-    </div>
-  </div>
   {#if S.src !== 'image'}
-    <TextDock field={S.src === 'font' ? 'words' : S.src}>
+    <TextDock field={S.src === 'font' ? 'words' : S.src} flush>
       {#snippet trailing()}
         {#if S.src === 'font' && app.art?.missing.length}<span class="text-warn" title="This font has no glyphs for these, so they're left out">no {app.art.missing.join(' ')}</span>{/if}
       {/snippet}

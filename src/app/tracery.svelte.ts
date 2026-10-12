@@ -1,7 +1,7 @@
 import { toast } from 'svelte-sonner';
-import { DEFAULTS, buildDownload, createProject, parseProject, render, type Look, type Raster, type Settings, type SourceImage } from '../engine';
+import { DEFAULTS, buildDownload, createProject, parseProject, render, type Raster, type Settings, type SourceImage } from '../engine';
 import { Editor } from './editor';
-import { ProjectStorage, type SavedLook, type SavedProject } from './storage';
+import { ProjectStorage, type SavedProject } from './storage';
 import { Renderer } from './renderer';
 import { decodeImage, importImage } from './images';
 import { downloadBlob } from './downloads';
@@ -11,8 +11,6 @@ export type { Step };
 
 export type View = 'loading' | 'home' | 'editor' | 'missing';
 
-/** Settings a saved look carries: the palette and the shape, never the source or output. */
-const LOOK_KEYS: (keyof Settings)[] = ['palette', 'stops', 'dither', 'dir', 'reverse', 'spread', 'gap', 'gapFillOn', 'gapFill', 'outline', 'outlineColor', 'lipOn', 'lipColor', 'shineOn', 'shineColor', 'bevel', 'shadowOn', 'shadowColor', 'sdx', 'sdy'];
 const message = (error: unknown) => (error as Error).message;
 function readFavorites(): string[] {
   try { const saved = JSON.parse(localStorage.getItem('tracery:favorites') ?? '[]'); if (Array.isArray(saved)) return saved.filter(f => typeof f === 'string'); } catch { /* Optional preference. */ }
@@ -52,7 +50,6 @@ export class Tracery {
   exportOpen = $state(false);
   /** Every banner in this browser, newest edit first. `null` until the first read. */
   banners = $state.raw<SavedProject[] | null>(null);
-  looks = $state.raw<SavedLook[]>([]);
 
   private decoded = $state.raw<Raster | null>(null);
   private fonts = $state(0);
@@ -82,7 +79,6 @@ export class Tracery {
 
   async start() {
     await this.storage.migrateLegacy();
-    void this.refreshLooks();
     this.router.subscribe(route => { void this.show(route); });
     void document.fonts.ready.then(() => this.fontsChanged());
     // Web fonts load on first use, often after the first render of a text banner. Draw again when one arrives.
@@ -261,26 +257,6 @@ export class Tracery {
   }
   async deleteBanner(record: SavedProject) {
     try { await this.storage.delete(record.id); toast(`Deleted ${record.name}.`); await this.refreshBanners(); }
-    catch (e) { toast.error(message(e)); }
-  }
-
-  // Saved looks: a palette and shape you can reuse on any banner
-
-  async refreshLooks() {
-    try { this.looks = await this.storage.looks(); } catch (e) { toast.error(message(e)); }
-  }
-  applyLook(look: Look) { if (this.edit(look.v)) toast(`Applied ${look.name}.`); }
-  async saveLook(name: string): Promise<boolean> {
-    const v: Partial<Settings> = {};
-    for (const key of LOOK_KEYS) Object.assign(v, { [key]: key === 'stops' ? this.settings.stops.slice() : this.settings[key] });
-    try {
-      const saved = await this.storage.saveLook(name, v);
-      await this.refreshLooks(); toast(`Saved ${saved.name}.`);
-      return true;
-    } catch (e) { toast.error(message(e)); return false; }
-  }
-  async deleteLook(look: SavedLook) {
-    try { await this.storage.deleteLook(look.id); await this.refreshLooks(); toast(`Deleted ${look.name}. Current settings were kept.`); }
     catch (e) { toast.error(message(e)); }
   }
 }

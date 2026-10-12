@@ -20,7 +20,7 @@
     <button
       type="button"
       aria-pressed={pressed}
-      class={cn(toggleVariants({ size: 'sm' }), 'h-7 flex-1 px-1 text-xs text-muted-foreground', 'aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:font-semibold aria-pressed:hover:bg-primary')}
+      class={cn(toggleVariants({ size: 'sm' }), 'h-7 flex-1 px-1 text-xs text-muted-foreground', 'aria-pressed:bg-foreground/12 aria-pressed:text-foreground aria-pressed:font-semibold aria-pressed:hover:bg-foreground/12')}
       onclick={() => { if (!pressed && app.edit({ [key]: option.value })) app.endEdit(); }}
     >
       {option.label}

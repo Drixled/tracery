@@ -1,7 +1,6 @@
-import { createProject, normalizeSettings, parseProject, validateSettings, type Look, type Project, type Settings, type SourceImage } from '../engine';
+import { createProject, normalizeSettings, parseProject, type Project, type Settings, type SourceImage } from '../engine';
 
 export interface SavedProject { id: string; name: string; settings: Settings; assetId: string | null; thumbnail: string; updatedAt: number }
-export interface SavedLook extends Look { id: string }
 const DRAFT = '$draft';
 const request = <T>(r: IDBRequest<T>) => new Promise<T>((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
 const finished = (tx: IDBTransaction) => new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onabort = tx.onerror = () => reject(tx.error ?? new Error('Browser storage failed.')); });
@@ -143,20 +142,5 @@ export class ProjectStorage {
       }
       await done;
     });
-  }
-  async looks(): Promise<SavedLook[]> {
-    const values = await this.all<SavedLook>('looks');
-    return values.map(look => { validateSettings(look.v); return look; });
-  }
-  async saveLook(name: string, v: Partial<Settings>): Promise<SavedLook> {
-    const clean = name.trim();
-    if (!clean || clean.length > 128) throw new Error('Use a look name from 1 to 128 characters.');
-    validateSettings(v);
-    const value: SavedLook = { id: crypto.randomUUID(), name: clean, v };
-    await this.enqueue(async () => { const db = await this.database; const tx = db.transaction('looks', 'readwrite'); const done = finished(tx); tx.objectStore('looks').put(value); await done; });
-    return value;
-  }
-  async deleteLook(id: string) {
-    await this.enqueue(async () => { const db = await this.database; const tx = db.transaction('looks', 'readwrite'); const done = finished(tx); tx.objectStore('looks').delete(id); await done; });
   }
 }

@@ -7,8 +7,9 @@
   /**
    * What's being drawn, typed in a bar that sticks to the bottom of the font picker or the preview.
    * Place it last in a scrolling column. `text` (web fonts) also updates `words`, so switching fonts keeps the text.
+   * `flush` drops the floating inset so the bar spans its column, right under the preview.
    */
-  let { field = 'words', trailing }: { field?: 'words' | 'text' | 'ascii'; trailing?: Snippet } = $props();
+  let { field = 'words', trailing, flush = false }: { field?: 'words' | 'text' | 'ascii'; trailing?: Snippet; flush?: boolean } = $props();
   const app = useTracery();
   const art = $derived(field === 'ascii');
   const maxLength = $derived.by(() => { const rule = SETTINGS_SCHEMA[field]; return rule.kind === 'string' ? rule.maxLength : undefined; });
@@ -19,8 +20,8 @@
   }
 </script>
 
-<div class="pointer-events-none sticky bottom-0 z-20 mt-auto flex justify-center px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-  <div class={cn('bg-popover/95 pointer-events-auto flex w-full items-end gap-3 rounded-xl border p-2 pl-4 shadow-[0_18px_50px_-12px_#000] backdrop-blur', art ? 'max-w-[880px]' : 'max-w-[640px]')}>
+<div class={cn('pointer-events-none sticky bottom-0 z-20 flex justify-center', flush ? 'pb-[env(safe-area-inset-bottom)]' : 'mt-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]')}>
+  <div class={cn('bg-popover/95 pointer-events-auto flex w-full items-end gap-3 rounded-xl border p-2 pl-4 shadow-[0_18px_50px_-12px_#000] backdrop-blur', flush ? 'rounded-[10px]' : art ? 'max-w-[880px]' : 'max-w-[640px]')}>
     <!-- svelte-ignore a11y_autofocus -->
     <textarea
       rows="1"

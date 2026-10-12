@@ -54,9 +54,9 @@
 {#if S.src === 'font' && S.tint === 'font' && fontColored}
   <p class="text-muted-foreground m-0 text-[11px]">
     Showing the font's own colors. Use
-    <button type="button" class="text-primary cursor-pointer underline-offset-4 hover:underline" onclick={() => { if (app.edit({ tint: 'ramp' })) app.endEdit(); }}>Gradient</button>
+    <button type="button" class="text-foreground cursor-pointer underline decoration-faint underline-offset-4 hover:decoration-foreground" onclick={() => { if (app.edit({ tint: 'ramp' })) app.endEdit(); }}>Gradient</button>
     or
-    <button type="button" class="text-primary cursor-pointer underline-offset-4 hover:underline" onclick={() => { if (app.edit({ tint: 'shade' })) app.endEdit(); }}>Shade</button>
+    <button type="button" class="text-foreground cursor-pointer underline decoration-faint underline-offset-4 hover:decoration-foreground" onclick={() => { if (app.edit({ tint: 'shade' })) app.endEdit(); }}>Shade</button>
     to recolor it with a palette.
   </p>
 {/if}
@@ -76,13 +76,13 @@
       </Select.Content>
     </Select.Root>
   </div>
-  <div class="flex max-h-[180px] flex-wrap content-start gap-1.5 overflow-auto p-0.5">
+  <div class="grid max-h-[220px] grid-cols-2 content-start gap-1.5 overflow-auto p-0.5">
     {#each groups as group, i (group.name)}
-      <div class={cn('text-faint basis-full text-[10px] tracking-[0.12em] uppercase', i > 0 && 'pt-2')}>{group.name} · {group.items.length}</div>
+      <div class={cn('text-faint col-span-full text-[10px] tracking-[0.12em] uppercase', i > 0 && 'pt-2')}>{group.name} · {group.items.length}</div>
       {#each group.items as p (p.name)}
-        <button type="button" class={cn(chip, 'py-1 pr-2 pl-1')} aria-pressed={p.name === S.palette} onclick={() => apply(p)}>
-          <span class="h-3.5 w-[22px] flex-none rounded-[2px]" style:background={`linear-gradient(180deg,${p.stops.join(',')})`} style:box-shadow={`0 0 0 2px ${p.outlineColor}`}></span>
-          {p.name}
+        <button type="button" class={cn(chip, 'min-w-0 py-1 pr-2 pl-1')} aria-pressed={p.name === S.palette} title={p.name} onclick={() => apply(p)}>
+          <span class="h-4 w-9 flex-none rounded-[2px]" style:background={`linear-gradient(90deg,${p.stops.join(',')})`} style:box-shadow={`0 0 0 2px ${p.outlineColor}`}></span>
+          <span class="truncate">{p.name}</span>
         </button>
       {/each}
     {/each}
